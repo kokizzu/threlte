@@ -1,5 +1,17 @@
 # @threlte/extras
 
+## 8.11.4
+
+### Patch Changes
+
+- 79b002b: Add missing package.json fields to improve npmjs.com pages
+
+## 8.11.3
+
+### Patch Changes
+
+- 943b0bd: imported classes as types not values in Gizmo and MeshRefractionMaterial components
+
 ## 8.11.2
 
 ### Patch Changes
