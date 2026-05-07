@@ -50,7 +50,7 @@
     time += delta
     let i = 0
     for (const group of groups) {
-      // group.position.setY(2 * Math.sin(time + i))
+      group.position.setY(2 * Math.sin(time + i))
       i += 1
     }
   })
