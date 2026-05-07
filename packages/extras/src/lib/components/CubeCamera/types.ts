@@ -1,13 +1,12 @@
 import type { Props } from '@threlte/core'
-import type { Group, Scene, CubeCamera, WebGLCubeRenderTarget } from 'three'
+import type { Group, Scene, CubeCamera } from 'three'
 
 export type CubeCameraProps = Props<
   Group,
   [
     {
-      camera: CubeCamera
+      camera: () => CubeCamera
       ref: Group
-      renderTarget: WebGLCubeRenderTarget
       restart(): void
       update(): void
     }

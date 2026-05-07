@@ -3,7 +3,8 @@ import { isInstanceOf } from '@threlte/core'
 
 const DEFAULT_NEAR = 1
 const DEFAULT_FAR = 1000
-const DEFAULT_RESOLUTION = 256
+
+const isPerspectiveCamera = (object: any) => isInstanceOf(object, 'PerspectiveCamera')
 
 /**
  * creates a `CubeCamera` instance
@@ -11,22 +12,16 @@ const DEFAULT_RESOLUTION = 256
  * the camera's `renderTarget` is disposed when the component unmounts.
  */
 export const useCubeCamera = (
-  near: () => number = () => DEFAULT_FAR,
-  far: () => number = () => DEFAULT_FAR,
-  resolution: () => number = () => DEFAULT_RESOLUTION
+  renderTarget: () => WebGLCubeRenderTarget,
+  near = () => DEFAULT_FAR,
+  far = () => DEFAULT_FAR
 ) => {
-  const renderTarget = new WebGLCubeRenderTarget(resolution())
-  const camera = new CubeCamera(DEFAULT_NEAR, DEFAULT_FAR, renderTarget)
-
-  $effect(() => {
-    const _resolution = resolution()
-    renderTarget.setSize(_resolution, _resolution)
-  })
+  const camera = $derived(new CubeCamera(DEFAULT_NEAR, DEFAULT_FAR, renderTarget()))
 
   $effect(() => {
     const _near = near()
     for (const child of camera.children) {
-      if (isInstanceOf(child, 'PerspectiveCamera')) {
+      if (isPerspectiveCamera(child)) {
         child.near = _near
         child.updateProjectionMatrix()
       }
@@ -36,22 +31,15 @@ export const useCubeCamera = (
   $effect(() => {
     const _far = far()
     for (const child of camera.children) {
-      if (isInstanceOf(child, 'PerspectiveCamera')) {
+      if (isPerspectiveCamera(child)) {
         child.far = _far
         child.updateProjectionMatrix()
       }
     }
   })
 
-  // dispose on unmount
-  $effect(() => {
-    return () => {
-      renderTarget.dispose()
-    }
-  })
-
   return {
-    camera,
-    renderTarget
+    // this has to be a getter or closure since cube the camera is derived
+    camera: () => camera
   }
 }

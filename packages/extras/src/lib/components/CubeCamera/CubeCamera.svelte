@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CubeCameraProps } from './types.js'
-  import { Group } from 'three'
+  import { Group, WebGLCubeRenderTarget } from 'three'
   import { observe, T, useTask, useThrelte } from '@threlte/core'
   import { useCubeCamera } from '../../hooks/useCubeCamera.svelte.js'
 
@@ -18,10 +18,19 @@
     ...props
   }: CubeCameraProps = $props()
 
-  export const { camera, renderTarget } = useCubeCamera(
+  const renderTarget = $derived(new WebGLCubeRenderTarget(resolution))
+
+  $effect(() => {
+    const lastRenderTarget = renderTarget
+    return () => {
+      lastRenderTarget.dispose()
+    }
+  })
+
+  export const { camera } = useCubeCamera(
+    () => renderTarget,
     () => near,
-    () => far,
-    () => resolution
+    () => far
   )
 
   const { renderer, scene } = useThrelte()
@@ -35,14 +44,17 @@
   export const update = () => {
     // if frames === Infinity, the task will run indefinitely
     if (count < frames) {
+      const lastBackground = scene.background
+      if (background !== 'auto') scene.background = background
+
+      const lastFog = scene.fog
+      if (fog !== 'auto') scene.fog = fog
+
       inner.visible = false
-      const originalFog = scene.fog
-      const originalBackground = scene.background
-      scene.background = background === 'auto' ? originalBackground : background
-      scene.fog = fog === 'auto' ? originalFog : fog
-      camera.update(renderer, scene)
-      scene.background = originalBackground
-      scene.fog = originalFog
+      camera().update(renderer, scene)
+
+      scene.background = lastBackground
+      scene.fog = lastFog
       inner.visible = true
       count += 1
     } else {
@@ -51,7 +63,9 @@
     }
   }
 
-  useTask(update, { running: () => running })
+  useTask(update, {
+    running: () => running
+  })
 
   export const restart = () => {
     if (running) {
@@ -64,7 +78,7 @@
   }
 
   // if any of these props update, the task will need to be restarted
-  observe(() => [background, far, near, fog, frames, resolution], restart)
+  observe(() => [background, far, near, fog, frames], restart)
 </script>
 
 <T
@@ -74,6 +88,11 @@
 >
   <T is={camera} />
   <T is={inner}>
-    {@render children?.({ camera, ref: group, renderTarget, restart, update })}
+    {@render children?.({
+      camera,
+      ref: group,
+      restart,
+      update
+    })}
   </T>
 </T>

@@ -4,7 +4,7 @@
 >
   const loaders: {
     exr?: EXRLoader
-    hdr?: RGBELoader
+    hdr?: HDRLoader
     tex?: TextureLoader
   } = {}
 </script>
@@ -13,17 +13,17 @@
   import { T, useCache, useThrelte } from '@threlte/core'
   import { EquirectangularReflectionMapping, TextureLoader } from 'three'
   import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
-  import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
   import { GroundedSkybox } from 'three/examples/jsm/objects/GroundedSkybox.js'
   import { useSuspense } from '../../../suspense/useSuspense.js'
   import { useEnvironment } from '../utils/useEnvironment.svelte.js'
   import type { EquirectangularEnvironmentProps } from './types.js'
+  import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 
   const ctx = useThrelte()
 
   let {
     skybox = $bindable(),
-    texture = $bindable(),
+    texture = $bindable(null),
     ground = false,
     isBackground = false,
     scene = ctx.scene,
@@ -33,17 +33,11 @@
   const suspend = useSuspense()
   const cache = useCache()
 
-  useEnvironment({
-    get scene() {
-      return scene
-    },
-    get isBackground() {
-      return isBackground
-    },
-    get texture() {
-      return texture
-    }
-  })
+  useEnvironment(
+    () => scene,
+    () => texture,
+    () => isBackground
+  )
 
   const isEXR = $derived(url?.endsWith('exr') ?? false)
   const isHDR = $derived(url?.endsWith('hdr') ?? false)
@@ -55,7 +49,7 @@
       loaders.exr ??= new EXRLoader()
       return loaders.exr
     } else if (isHDR) {
-      loaders.hdr ??= new RGBELoader()
+      loaders.hdr ??= new HDRLoader()
       return loaders.hdr
     }
     loaders.tex ??= new TextureLoader()

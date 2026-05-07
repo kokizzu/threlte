@@ -3,6 +3,7 @@
   import { createSceneContext, observe, T, useTask, useThrelte } from '@threlte/core'
   import { useCubeCamera } from '../../../hooks/useCubeCamera.svelte.js'
   import { useEnvironment } from '../utils/useEnvironment.svelte.js'
+  import { WebGLCubeRenderTarget } from 'three'
 
   const ctx = useThrelte()
 
@@ -22,24 +23,29 @@
   // Create a parent scene to render the virtual environment into
   const { scene } = createSceneContext()
 
-  export const { camera, renderTarget } = useCubeCamera(
-    () => near,
-    () => far,
-    () => resolution
-  )
+  const renderTarget = $derived(new WebGLCubeRenderTarget(resolution))
 
-  useEnvironment({
-    texture: renderTarget.texture,
-    get scene() {
-      return parentScene
-    },
-    get isBackground() {
-      return isBackground
+  $effect(() => {
+    renderTarget
+    return () => {
+      renderTarget.dispose()
     }
   })
 
+  export const { camera } = useCubeCamera(
+    () => renderTarget,
+    () => near,
+    () => far
+  )
+
+  useEnvironment(
+    () => parentScene,
+    () => renderTarget.texture,
+    () => isBackground
+  )
+
   export const update = () => {
-    camera.update(ctx.renderer, scene)
+    camera().update(ctx.renderer, scene)
   }
 
   let running = $state(false)
@@ -77,5 +83,5 @@
   attach={visible ? undefined : false}
 >
   <T is={camera} />
-  {@render children?.({ camera, renderTarget, restart, update })}
+  {@render children?.({ camera, restart, update })}
 </T>
