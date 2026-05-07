@@ -1,5 +1,30 @@
 # @threlte/core
 
+## 8.5.11
+
+### Patch Changes
+
+- 5588329: Perf: replace internal useThrelte() calls with more lightweight fragment contexts
+- 4544308: Perf: rework parent contexts to use lightweight getter-backed current values internally
+
+## 8.5.10
+
+### Patch Changes
+
+- d639f30: Narrow T event handler payloads per event-key on Object3D, and give Threlte.UserProps precedence over auto-derived EventProps for shared keys
+
+## 8.5.9
+
+### Patch Changes
+
+- c99afe5: WebGPURenderer no longer crashes during HMR when dispose is called before async initialization completes
+
+## 8.5.8
+
+### Patch Changes
+
+- bfd06cd: Exclude test files and **tests** directories from published packages
+
 ## 8.5.7
 
 ### Patch Changes

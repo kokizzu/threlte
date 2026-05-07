@@ -20,7 +20,7 @@
   import { T, useLoader, useTask } from '@threlte/core'
   import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 
-  type SceneProps = {
+  interface Props {
     frames?: number
     hdr?: 'auto' | keyof typeof hdrs
     metalness?: number
@@ -37,7 +37,7 @@
     near = 0.1,
     resolution = 256,
     roughness = 0
-  }: SceneProps = $props()
+  }: Props = $props()
 
   const colors = ['#ff00ff', '#ffff00', '#00ffff'] as const
 
