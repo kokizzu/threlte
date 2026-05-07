@@ -26,9 +26,9 @@
   const renderTarget = $derived(new WebGLCubeRenderTarget(resolution))
 
   $effect(() => {
-    renderTarget
+    let last = renderTarget
     return () => {
-      renderTarget.dispose()
+      last.dispose()
     }
   })
 
