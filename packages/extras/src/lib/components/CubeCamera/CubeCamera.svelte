@@ -3,7 +3,6 @@
   import { Group, WebGLCubeRenderTarget } from 'three'
   import { observe, T, useTask, useThrelte } from '@threlte/core'
   import { useCubeCamera } from '../../hooks/useCubeCamera.svelte.js'
-  import { untrack } from 'svelte'
 
   let {
     background = 'auto',
