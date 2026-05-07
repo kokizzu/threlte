@@ -17,13 +17,14 @@
   import type { Group } from 'three'
   import { CubeCamera, Environment, Grid, OrbitControls } from '@threlte/extras'
   import { EquirectangularReflectionMapping } from 'three'
-  import { RGBELoader } from 'three/examples/jsm/Addons.js'
   import { T, useLoader, useTask } from '@threlte/core'
+  import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 
   type SceneProps = {
     frames?: number
     hdr?: 'auto' | keyof typeof hdrs
     metalness?: number
+    far?: number
     near?: number
     resolution?: number
     roughness?: number
@@ -49,14 +50,14 @@
     time += delta
     let i = 0
     for (const group of groups) {
-      group.position.setY(2 * Math.sin(time + i))
+      // group.position.setY(2 * Math.sin(time + i))
       i += 1
     }
   })
 
   const hdrPath = '/textures/equirectangular/hdr/'
 
-  const loader = useLoader(RGBELoader, {
+  const loader = useLoader(HDRLoader, {
     extend(loader) {
       loader.setPath(hdrPath)
     }
@@ -77,8 +78,6 @@
 >
   <OrbitControls
     enableDamping
-    enablePan={false}
-    enableZoom={false}
     target.y={0.5}
     autoRotate
     autoRotateSpeed={0.1}
@@ -122,13 +121,13 @@
         {near}
         {resolution}
       >
-        {#snippet children({ renderTarget })}
+        {#snippet children({ camera })}
           <T.Mesh>
             <T.SphereGeometry />
             <T.MeshStandardMaterial
               {roughness}
               {metalness}
-              envMap={renderTarget.texture}
+              envMap={camera().renderTarget.texture}
             />
           </T.Mesh>
         {/snippet}

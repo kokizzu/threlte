@@ -28,6 +28,7 @@
   let frames = $derived(capFrames ? 3 : Infinity)
 
   let near = $state(0.1)
+  let far = $state(1000)
 </script>
 
 <Pane
@@ -57,6 +58,12 @@
       max={15}
       min={0.1}
     />
+    <Slider
+      bind:value={far}
+      label="far"
+      max={2000}
+      min={10}
+    />
   </Folder>
   <Folder title="material props">
     <Slider
@@ -83,6 +90,7 @@
       {hdr}
       {metalness}
       {near}
+      {far}
       {resolution}
       {roughness}
     />

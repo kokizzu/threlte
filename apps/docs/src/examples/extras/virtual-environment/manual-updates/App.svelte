@@ -4,7 +4,7 @@
 </script>
 
 <div>
-  <Canvas>
+  <Canvas renderMode="on-demand">
     <Scene />
   </Canvas>
 </div>
