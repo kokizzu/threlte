@@ -8,17 +8,17 @@ export type CommonEnvironmentProps = {
    * Whether to set the `scene`'s background to the loaded environment
    * @default false
    */
-  isBackground: boolean
+  isBackground?: boolean
 
   /**
    * The scene to apply the environment to
    * @default useThrelte().scene
    */
-  scene: Scene
+  scene?: Scene
 
   /**
    * A bindable of the loaded texture
    * @default null
    */
-  texture: Scene['environment']
+  texture?: Scene['environment']
 }
