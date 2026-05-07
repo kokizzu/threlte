@@ -7,7 +7,7 @@ export type VirtualEnvironmentProps = {
       {
         restart(): void
         update(): void
-        camera: () => CubeCamera
+        camera: { current: CubeCamera }
       }
     ]
   >

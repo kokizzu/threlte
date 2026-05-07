@@ -5,7 +5,7 @@ export type CubeCameraProps = Props<
   Group,
   [
     {
-      camera: () => CubeCamera
+      camera: { current: CubeCamera }
       ref: Group
       restart(): void
       update(): void

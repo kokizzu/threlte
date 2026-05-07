@@ -18,7 +18,7 @@
   import { CubeCamera, Environment, Grid, OrbitControls } from '@threlte/extras'
   import { EquirectangularReflectionMapping } from 'three'
   import { T, useLoader, useTask } from '@threlte/core'
-  import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
+  import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 
   interface Props {
     frames?: number
@@ -57,7 +57,7 @@
 
   const hdrPath = '/textures/equirectangular/hdr/'
 
-  const loader = useLoader(HDRLoader, {
+  const loader = useLoader(RGBELoader, {
     extend(loader) {
       loader.setPath(hdrPath)
     }
@@ -80,6 +80,8 @@
     enableDamping
     target.y={0.5}
     autoRotate
+    enablePan={false}
+    enableZoom={false}
     autoRotateSpeed={0.1}
   />
 </T.PerspectiveCamera>
@@ -127,7 +129,7 @@
             <T.MeshStandardMaterial
               {roughness}
               {metalness}
-              envMap={camera().renderTarget.texture}
+              envMap={camera.current.renderTarget.texture}
             />
           </T.Mesh>
         {/snippet}

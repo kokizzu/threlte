@@ -3,6 +3,7 @@
   import { Group, WebGLCubeRenderTarget } from 'three'
   import { observe, T, useTask, useThrelte } from '@threlte/core'
   import { useCubeCamera } from '../../hooks/useCubeCamera.svelte.js'
+  import { untrack } from 'svelte'
 
   let {
     background = 'auto',
@@ -18,16 +19,15 @@
     ...props
   }: CubeCameraProps = $props()
 
-  const renderTarget = $derived(new WebGLCubeRenderTarget(resolution))
-
+  const renderTarget = new WebGLCubeRenderTarget(1)
   $effect(() => {
-    const lastRenderTarget = renderTarget
-    return () => {
-      lastRenderTarget.dispose()
-    }
+    renderTarget.setSize(resolution, resolution)
+  })
+  $effect(() => {
+    return () => renderTarget.dispose()
   })
 
-  export const { camera } = useCubeCamera(
+  export const camera = useCubeCamera(
     () => renderTarget,
     () => near,
     () => far
@@ -51,7 +51,7 @@
       if (fog !== 'auto') scene.fog = fog
 
       inner.visible = false
-      camera().update(renderer, scene)
+      camera.current.update(renderer, scene)
 
       scene.background = lastBackground
       scene.fog = lastFog

@@ -4,7 +4,7 @@
 >
   const loaders: {
     exr?: EXRLoader
-    hdr?: HDRLoader
+    hdr?: RGBELoader
     tex?: TextureLoader
   } = {}
 </script>
@@ -17,7 +17,7 @@
   import { useSuspense } from '../../../suspense/useSuspense.js'
   import { useEnvironment } from '../utils/useEnvironment.svelte.js'
   import type { EquirectangularEnvironmentProps } from './types.js'
-  import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
+  import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 
   const ctx = useThrelte()
 
@@ -42,14 +42,13 @@
   const isEXR = $derived(url?.endsWith('exr') ?? false)
   const isHDR = $derived(url?.endsWith('hdr') ?? false)
 
-  // defaults to `TextureLoader` if `url` is not provided
   const loader = $derived.by(() => {
-    if (url === undefined) return
     if (isEXR) {
       loaders.exr ??= new EXRLoader()
       return loaders.exr
-    } else if (isHDR) {
-      loaders.hdr ??= new HDRLoader()
+    }
+    if (isHDR) {
+      loaders.hdr ??= new RGBELoader()
       return loaders.hdr
     }
     loaders.tex ??= new TextureLoader()
@@ -57,23 +56,19 @@
   })
 
   $effect.pre(() => {
-    if (url === undefined || loader === undefined) {
-      return
-    }
-
     const suspendedTexture = suspend(
       cache.remember(() => {
         return loader.loadAsync(url)
       }, [url])
     )
 
-    suspendedTexture.then((t) => {
-      t.mapping = EquirectangularReflectionMapping
-      texture = t
+    const promise = suspendedTexture.then((texture) => {
+      texture.mapping = EquirectangularReflectionMapping
+      return texture
     })
 
     return () => {
-      suspendedTexture.then((texture) => {
+      promise.then((texture) => {
         texture.dispose()
       })
     }

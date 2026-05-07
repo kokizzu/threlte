@@ -83,16 +83,18 @@ are set to invisible to exclude them from the render.
 
 ## Usage
 
-The entire render target that is used by the underlying cube camera is available
-through the `renderTarget` snippet prop. Usually you'll only want to use the
-`renderTarget.texture`.
+CubeCamera's `camera` instance is passed to its `children` snippet. The
+`camera` has a `current` prop which is a getter to the derived `CubeCamera`
+instance. `CubeCamera` exposes its renderTarget as a property on the instance.
+From here, you can set the `envMap` of materials to be the render target's
+texture.
 
 ```svelte
 <CubeCamera>
-  {#snippet children({ renderTarget })}
+  {#snippet children({ camera })}
     <T.Mesh>
       <T.SphereGeometry />
-      <T.MeshStandardMaterial envMap={renderTarget.texture} />
+      <T.MeshStandardMaterial envMap={camera.current.renderTarget.texture} />
     </T.Mesh>
   {/snippet}
 </CubeCamera>

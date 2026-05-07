@@ -4,12 +4,19 @@ import { isInstanceOf } from '@threlte/core'
 const DEFAULT_NEAR = 1
 const DEFAULT_FAR = 1000
 
-const isPerspectiveCamera = (object: any) => isInstanceOf(object, 'PerspectiveCamera')
-
 /**
- * creates a `CubeCamera` instance
- * `near` and `far`, and `resolution` are getters so you can use $state()
- * the camera's `renderTarget` is disposed when the component unmounts.
+ * creates a derived CubeCamera instance
+ * @example
+ * ```svelte
+ * <script>
+ * let near = $state(0.1)
+ * let far = $state(1000)
+ * const renderTarget = new WebGLCubeRenderTarget(512);
+ * const camera = useCubeCamera(() => near, () => far, () => renderTarget);
+ * useTask(() => { camera.current.update(renderer, scene); })
+ * </script>
+ * ```
+ * @return an object with a property `current` that is a getter to the derived cubeCamera
  */
 export const useCubeCamera = (
   renderTarget: () => WebGLCubeRenderTarget,
@@ -21,7 +28,7 @@ export const useCubeCamera = (
   $effect(() => {
     const _near = near()
     for (const child of camera.children) {
-      if (isPerspectiveCamera(child)) {
+      if (isInstanceOf(child, 'PerspectiveCamera')) {
         child.near = _near
         child.updateProjectionMatrix()
       }
@@ -31,7 +38,7 @@ export const useCubeCamera = (
   $effect(() => {
     const _far = far()
     for (const child of camera.children) {
-      if (isPerspectiveCamera(child)) {
+      if (isInstanceOf(child, 'PerspectiveCamera')) {
         child.far = _far
         child.updateProjectionMatrix()
       }
@@ -39,7 +46,8 @@ export const useCubeCamera = (
   })
 
   return {
-    // this has to be a getter or closure since cube the camera is derived
-    camera: () => camera
+    get current() {
+      return camera
+    }
   }
 }

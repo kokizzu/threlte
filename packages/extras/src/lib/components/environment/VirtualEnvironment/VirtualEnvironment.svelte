@@ -23,16 +23,18 @@
   // Create a parent scene to render the virtual environment into
   const { scene } = createSceneContext()
 
-  const renderTarget = $derived(new WebGLCubeRenderTarget(resolution))
-
+  const renderTarget = new WebGLCubeRenderTarget(1)
   $effect(() => {
-    let last = renderTarget
     return () => {
-      last.dispose()
+      renderTarget.dispose()
     }
   })
 
-  export const { camera } = useCubeCamera(
+  $effect(() => {
+    renderTarget.setSize(resolution, resolution)
+  })
+
+  export const camera = useCubeCamera(
     () => renderTarget,
     () => near,
     () => far
@@ -45,7 +47,7 @@
   )
 
   export const update = () => {
-    camera().update(ctx.renderer, scene)
+    camera.current.update(ctx.renderer, scene)
   }
 
   let running = $state(false)
