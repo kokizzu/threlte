@@ -20,35 +20,29 @@ const memoizeProp = (value: unknown): boolean => {
 }
 
 const setter = (target: any, key: any, value: any) => {
+  const current = target[key]
+  const valueIsArray = Array.isArray(value)
+
   if (
-    !Array.isArray(value) &&
+    !valueIsArray &&
     typeof value === 'number' &&
-    typeof target[key] === 'object' &&
-    target[key] !== null &&
-    typeof target[key]?.setScalar === 'function' &&
-    // colors do have a setScalar function, but we don't want to use it, because
-    // the hex notation (i.e. 0xff0000) is very popular and matches the number
-    // type. So we exclude colors here.
-    !target[key]?.isColor
+    typeof current === 'object' &&
+    current !== null &&
+    typeof current.setScalar === 'function' &&
+    // Colors have setScalar, but the hex notation (e.g. 0xff0000) is popular
+    // and matches the number type, so route colors through .set() instead.
+    !current.isColor
   ) {
-    // edge case of setScalar setters
-    target[key].setScalar(value)
+    current.setScalar(value)
+  } else if (
+    typeof current === 'object' &&
+    current !== null &&
+    typeof current.set === 'function'
+  ) {
+    if (valueIsArray) current.set(...value)
+    else current.set(value)
   } else {
-    if (
-      typeof target[key]?.set === 'function' &&
-      typeof target[key] === 'object' &&
-      target[key] !== null
-    ) {
-      // if the property has a "set" function, we can use it
-      if (Array.isArray(value)) {
-        target[key].set(...value)
-      } else {
-        target[key].set(value)
-      }
-    } else {
-      // otherwise, we just set the value
-      target[key] = value
-    }
+    target[key] = value
   }
 }
 
