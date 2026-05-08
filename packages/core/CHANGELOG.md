@@ -1,5 +1,11 @@
 # @threlte/core
 
+## 8.5.13
+
+### Patch Changes
+
+- ab91a3b: Perf: cache property lookups in useProps
+
 ## 8.5.12
 
 ### Patch Changes
