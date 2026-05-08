@@ -34,11 +34,7 @@ const setter = (target: any, key: any, value: any) => {
     !current.isColor
   ) {
     current.setScalar(value)
-  } else if (
-    typeof current === 'object' &&
-    current !== null &&
-    typeof current.set === 'function'
-  ) {
+  } else if (typeof current === 'object' && current !== null && typeof current.set === 'function') {
     if (valueIsArray) current.set(...value)
     else current.set(value)
   } else {
