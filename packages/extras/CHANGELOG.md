@@ -1,5 +1,12 @@
 # @threlte/extras
 
+## 9.15.2
+
+### Patch Changes
+
+- ab91a3b: Perf: cache values in useInputMap and useKeyboard
+- ab91a3b: Fix: capture portal id to prevent live value reads when props update
+
 ## 9.15.1
 
 ### Patch Changes
