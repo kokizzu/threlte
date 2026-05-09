@@ -4,9 +4,9 @@
   import Scene from './Scene.svelte'
 
   let enabled = $state(true)
-  let size = $state(25)
+  let size = $state(60)
   let focus = $state(0)
-  let samples = $state(10)
+  let samples = $state(16)
 </script>
 
 <Pane

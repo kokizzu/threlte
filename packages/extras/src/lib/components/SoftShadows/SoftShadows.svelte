@@ -30,11 +30,19 @@
 >
   import { ShaderChunk } from 'three'
 
-  // Captured once per page load. Per-instance capture would re-snapshot the
-  // chunk on remount/HMR while it might already contain our injection,
-  // making subsequent injections stack and `onDestroy` "restore" to a
-  // polluted chunk.
+  // Captured once per page load.
   const original = ShaderChunk.shadowmap_pars_fragment
+
+  // Three.js modernized shadow mapping between r175 and r183 (PRs #32181/#32303
+  // /#32407/#32443): `unpackRGBAToDepth` was removed, the PCF branch now uses
+  // `sampler2DShadow` (hardware comparison only — no raw depth reads), and the
+  // BASIC branch reads depth directly via `.r`. Detect once and pick the right
+  // sampling path + injection target.
+  const isLegacyChunk = original.includes('unpackRGBAToDepth')
+  const sampleDepth = isLegacyChunk
+    ? 'unpackRGBAToDepth(texture2D(shadowMap, '
+    : 'texture2D(shadowMap, '
+  const sampleDepthSuffix = isLegacyChunk ? '))' : ').r'
 </script>
 
 <script lang="ts">
@@ -53,17 +61,6 @@
   }
 
   let { size = 25, focus = 0, samples = 10 }: Props = $props()
-
-  // Three.js modernized shadow mapping between r175 and r183 (PRs #32181/#32303
-  // /#32407/#32443): `unpackRGBAToDepth` was removed, the PCF branch now uses
-  // `sampler2DShadow` (hardware comparison only — no raw depth reads), and the
-  // BASIC branch reads depth directly via `.r`. Detect once and pick the right
-  // sampling path + injection target.
-  const isLegacyChunk = original.includes('unpackRGBAToDepth')
-  const sampleDepth = isLegacyChunk
-    ? 'unpackRGBAToDepth(texture2D(shadowMap, '
-    : 'texture2D(shadowMap, '
-  const sampleDepthSuffix = isLegacyChunk ? '))' : ').r'
 
   // 1.25 is folded into `size` so the inner filter loop avoids one multiply.
   const filterScale = $derived(size * 1.25)
