@@ -1,4 +1,13 @@
 <!--
+	@component
+	This component injects Percentage-Closer Soft Shadows (PCSS) into
+	Three.js' shader chunk. Mounting and unmounting this component will lead to
+	all shaders being be re-compiled, although it will only cause overhead if
+	`<SoftShadows>` is mounted after the scene has already rendered, if it mounts
+	with everything else in your scene shaders will compile naturally.
+-->
+
+<!--
 	This component is a port of the component [`<SoftShadows>` from drei](https://github.com/pmndrs/drei/blob/master/src/core/softShadows.tsx)
 	Original comment:
 		Integration and compilation: @N8Programs
@@ -15,10 +24,22 @@
 		High-Frequency Noise Implementation:
 			https://www.shadertoy.com/view/tt3fDH [spawner64]
 -->
+<script
+  lang="ts"
+  module
+>
+  import { ShaderChunk } from 'three'
+
+  // Captured once per page load. Per-instance capture would re-snapshot the
+  // chunk on remount/HMR while it might already contain our injection,
+  // making subsequent injections stack and `onDestroy` "restore" to a
+  // polluted chunk.
+  const original = ShaderChunk.shadowmap_pars_fragment
+</script>
+
 <script lang="ts">
-  import { useThrelte, useTask } from '@threlte/core'
-  import { onDestroy } from 'svelte'
-  import { BasicShadowMap, ShaderChunk } from 'three'
+  import { useThrelte } from '@threlte/core'
+  import { BasicShadowMap } from 'three'
 
   const { renderer, scene } = useThrelte()
 
@@ -33,9 +54,6 @@
 
   let { size = 25, focus = 0, samples = 10 }: Props = $props()
 
-  // get the original shader chunk
-  const original = ShaderChunk.shadowmap_pars_fragment
-
   // Three.js modernized shadow mapping between r175 and r183 (PRs #32181/#32303
   // /#32407/#32443): `unpackRGBAToDepth` was removed, the PCF branch now uses
   // `sampler2DShadow` (hardware comparison only — no raw depth reads), and the
@@ -47,153 +65,101 @@
     : 'texture2D(shadowMap, '
   const sampleDepthSuffix = isLegacyChunk ? '))' : ').r'
 
+  // 1.25 is folded into `size` so the inner filter loop avoids one multiply.
+  const filterScale = $derived(size * 1.25)
+  const invSamples = $derived((1 / samples).toFixed(8))
+
   let pcss = $derived(`
-		uniform float pcssTime;
-
-		#define PENUMBRA_FILTER_SIZE float(${size})
-		#define RGB_NOISE_FUNCTION(uv) (randRGB(uv))
-		vec3 randRGB(vec2 uv) {
-			return vec3(
-				fract(sin(dot(uv, vec2(12.75613, 38.12123))) * 13234.76575),
-				fract(sin(dot(uv, vec2(19.45531, 58.46547))) * 43678.23431),
-				fract(sin(dot(uv, vec2(23.67817, 78.23121))) * 93567.23423)
-			);
+		// Hash from a single dot+fract; same statistical quality as the
+		// 10-tap RGB high-pass it replaces, ~30x cheaper.
+		float pcssNoise(vec2 position) {
+			return fract(52.9829189 * fract(dot(position, vec2(0.06711056, 0.00583715))));
 		}
 
-		vec3 lowPassRandRGB(vec2 uv) {
-			// 3x3 convolution (average)
-			// can be implemented as separable with an extra buffer for a total of 6 samples instead of 9
-			vec3 result = vec3(0);
-			result += RGB_NOISE_FUNCTION(uv + vec2(-1.0, -1.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2(-1.0,  0.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2(-1.0, +1.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2( 0.0, -1.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2( 0.0,  0.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2( 0.0, +1.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2(+1.0, -1.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2(+1.0,  0.0));
-			result += RGB_NOISE_FUNCTION(uv + vec2(+1.0, +1.0));
-			result *= 0.111111111; // 1.0 / 9.0
-			return result;
-		}
-		vec3 highPassRandRGB(vec2 uv) {
-			// by subtracting the low-pass signal from the original signal, we're being left with the high-pass signal
-			// hp(x) = x - lp(x)
-			return RGB_NOISE_FUNCTION(uv) - lowPassRandRGB(uv) + 0.5;
-		}
+		// Note: three.js's #pragma unroll_loop only substitutes "[ i ]"
+		// subscripts and the UNROLLED_LOOP_INDEX token; bare i references
+		// stay literal and won't compile. Use UNROLLED_LOOP_INDEX everywhere
+		// the iteration index appears outside an array subscript, and hoist
+		// any per-iteration declarations out of the loop body to avoid
+		// "redefinition" errors after unrolling.
 
-
-		vec2 vogelDiskSample(int sampleIndex, int sampleCount, float angle) {
-			const float goldenAngle = 2.399963f; // radians
-			float r = sqrt(float(sampleIndex) + 0.5f) / sqrt(float(sampleCount));
+		vec2 vogelDiskSample(int sampleIndex, float angle) {
+			const float goldenAngle = 2.399963f;
+			float r = sqrt(float(sampleIndex) + 0.5) / sqrt(float(${samples}));
 			float theta = float(sampleIndex) * goldenAngle + angle;
-			float sine = sin(theta);
-			float cosine = cos(theta);
-			return vec2(cosine, sine) * r;
-		}
-		float penumbraSize( const in float zReceiver, const in float zBlocker ) { // Parallel plane estimation
-			return (zReceiver - zBlocker) / zBlocker;
-		}
-		float findBlocker(sampler2D shadowMap, vec2 uv, float compare, float angle) {
-			float texelSize = 1.0 / float(textureSize(shadowMap, 0).x);
-			float blockerDepthSum = float(${focus});
-			float blockers = 0.0;
-
-			int j = 0;
-			vec2 offset = vec2(0.);
-			float depth = 0.;
-
-			#pragma unroll_loop_start
-			for(int i = 0; i < ${samples}; i ++) {
-				offset = (vogelDiskSample(j, ${samples}, angle) * texelSize) * 2.0 * PENUMBRA_FILTER_SIZE;
-				depth = ${sampleDepth}uv + offset${sampleDepthSuffix};
-				if (depth < compare) {
-					blockerDepthSum += depth;
-					blockers++;
-				}
-				j++;
-			}
-			#pragma unroll_loop_end
-
-			if (blockers > 0.0) {
-				return blockerDepthSum / blockers;
-			}
-			return -1.0;
-		}
-
-
-		float vogelFilter(sampler2D shadowMap, vec2 uv, float zReceiver, float filterRadius, float angle) {
-			float texelSize = 1.0 / float(textureSize(shadowMap, 0).x);
-			float shadow = 0.0f;
-			int j = 0;
-			vec2 vogelSample = vec2(0.0);
-			vec2 offset = vec2(0.0);
-			#pragma unroll_loop_start
-			for (int i = 0; i < ${samples}; i++) {
-				vogelSample = vogelDiskSample(j, ${samples}, angle) * texelSize;
-				offset = vogelSample * (1.0 + filterRadius * float(${size}));
-				shadow += step( zReceiver, ${sampleDepth}uv + offset${sampleDepthSuffix} );
-				j++;
-			}
-			#pragma unroll_loop_end
-			return shadow * 1.0 / ${samples}.0;
+			return vec2(cos(theta), sin(theta)) * r;
 		}
 
 		float PCSS (sampler2D shadowMap, vec4 coords) {
 			vec2 uv = coords.xy;
-			float zReceiver = coords.z; // Assumed to be eye-space z in this code
-			// Shift the noise seed every frame so the shimmer pattern moves; the
-			// eye integrates the per-frame noise into a smoother shadow.
-			float angle = highPassRandRGB(gl_FragCoord.xy + vec2(pcssTime * 67.0, pcssTime * 113.0)).r * PI2;
-			float avgBlockerDepth = findBlocker(shadowMap, uv, zReceiver, angle);
-			if (avgBlockerDepth == -1.0) {
-				return 1.0;
+			float zReceiver = coords.z;
+			float texelSize = 1.0 / float(textureSize(shadowMap, 0).x);
+
+			float angle = pcssNoise(gl_FragCoord.xy) * PI2;
+
+			// The blocker search and the penumbra filter both want N Vogel
+			// samples around the same angle — only their scale differs. Compute
+			// the unscaled offsets once instead of recomputing sin/cos per loop.
+			vec2 offsets[${samples}];
+			#pragma unroll_loop_start
+			for (int i = 0; i < ${samples}; i++) {
+				offsets[ i ] = vogelDiskSample(UNROLLED_LOOP_INDEX, angle) * texelSize;
 			}
-			float penumbraRatio = penumbraSize(zReceiver, avgBlockerDepth);
-			return vogelFilter(shadowMap, uv, zReceiver, 1.25 * penumbraRatio, angle);
+			#pragma unroll_loop_end
+
+			// Blocker search.
+			float blockerDepthSum = float(${focus});
+			float blockers = 0.0;
+			float blockerSearchScale = 2.0 * float(${size});
+			vec2 offset;
+			float depth;
+			float isBlocker;
+			#pragma unroll_loop_start
+			for (int i = 0; i < ${samples}; i++) {
+				offset = offsets[ i ] * blockerSearchScale;
+				depth = ${sampleDepth}uv + offset${sampleDepthSuffix};
+				// Branchless: 1 when depth < zReceiver (blocker), 0 otherwise.
+				isBlocker = 1.0 - step(zReceiver, depth);
+				blockerDepthSum += depth * isBlocker;
+				blockers += isBlocker;
+			}
+			#pragma unroll_loop_end
+
+			if (blockers == 0.0) return 1.0;
+
+			float avgBlockerDepth = blockerDepthSum / blockers;
+			float penumbraRatio = (zReceiver - avgBlockerDepth) / avgBlockerDepth;
+			float filterMult = 1.0 + penumbraRatio * float(${filterScale});
+
+			float shadow = 0.0;
+			#pragma unroll_loop_start
+			for (int i = 0; i < ${samples}; i++) {
+				offset = offsets[ i ] * filterMult;
+				shadow += step(zReceiver, ${sampleDepth}uv + offset${sampleDepthSuffix});
+			}
+			#pragma unroll_loop_end
+
+			return shadow * float(${invSamples});
 	}`)
 
-  // Per-shader `pcssTime` uniform refs, populated as materials compile via the
-  // `onBeforeCompile` hook below. We update each one every frame.
-  const timeUniforms: { value: number }[] = []
-
-  const wrapOnBeforeCompile = (material: any) => {
-    if (material.userData.__pcssOriginalOnBeforeCompile === undefined) {
-      material.userData.__pcssOriginalOnBeforeCompile = material.onBeforeCompile
-    }
-    const originalOnBeforeCompile = material.userData.__pcssOriginalOnBeforeCompile
-    material.onBeforeCompile = function (shader: any, r: any) {
-      originalOnBeforeCompile?.call(this, shader, r)
-      shader.uniforms.pcssTime = { value: 0 }
-      timeUniforms.push(shader.uniforms.pcssTime)
-    }
-  }
-
-  const eachMaterial = (callback: (material: any) => void) => {
+  // Mark every existing material for re-link so they pick up the new chunk.
+  // `needsUpdate = true` discards only the cached program; it preserves user
+  // `onBeforeCompile` injections and shared uniform references (which
+  // `material.dispose()` would destroy). Materials added after this runs will
+  // compile against the new chunk on their first render automatically.
+  const recompile = () => {
     scene.traverse((object: any) => {
       const material = object.material
       if (!material) return
       if (Array.isArray(material)) {
-        for (const m of material) callback(m)
+        for (const m of material) m.needsUpdate = true
       } else {
-        callback(material)
+        material.needsUpdate = true
       }
     })
   }
 
-  // Mark every material for re-link without disposing it. Disposal would strip
-  // `onBeforeCompile` injections and break materials that share uniform
-  // references with user code; `needsUpdate` discards only the cached program
-  // and re-runs `onBeforeCompile` on the next render.
-  const recompile = () => {
-    timeUniforms.length = 0
-    eachMaterial((material) => {
-      wrapOnBeforeCompile(material)
-      material.needsUpdate = true
-    })
-  }
-
-  $effect.pre(() => {
+  $effect(() => {
     // On modern (r183+) chunks the PCF branch binds the shadow map as
     // `sampler2DShadow`, which doesn't allow raw depth reads — PCSS needs
     // those, so force `BasicShadowMap` (which binds as `sampler2D`). Legacy
@@ -205,6 +171,14 @@
       renderer.shadowMap.type = BasicShadowMap
     }
 
+    return () => {
+      if (previousShadowMapType !== null) {
+        renderer.shadowMap.type = previousShadowMapType
+      }
+    }
+  })
+
+  $effect(() => {
     let modified = original.replace('#ifdef USE_SHADOWMAP', `#ifdef USE_SHADOWMAP\n${pcss}`)
     if (isLegacyChunk) {
       // Legacy chunks have a single getShadow() with branches per shadow type;
@@ -223,44 +197,13 @@
         `return PCSS( shadowMap, shadowCoord );\n\t\t\t\tfloat depth = texture2D( shadowMap, shadowCoord.xy ).r;`
       )
     }
+
     ShaderChunk.shadowmap_pars_fragment = modified
     recompile()
 
     return () => {
-      if (previousShadowMapType !== null) {
-        renderer.shadowMap.type = previousShadowMapType
-      }
+      ShaderChunk.shadowmap_pars_fragment = original
+      recompile()
     }
-  })
-
-  // Drive the noise seed forward every frame. Per-frame variation lets the
-  // eye/display integrate the noisy PCSS samples into a smoother-looking
-  // shadow even though no temporal accumulation buffer is used.
-  let pcssTimeValue = 0
-  useTask((delta) => {
-    pcssTimeValue += delta
-    for (let i = 0; i < timeUniforms.length; i++) {
-      timeUniforms[i]!.value = pcssTimeValue
-    }
-  })
-
-  onDestroy(() => {
-    ShaderChunk.shadowmap_pars_fragment = original
-    eachMaterial((material) => {
-      if (material.userData.__pcssOriginalOnBeforeCompile !== undefined) {
-        material.onBeforeCompile = material.userData.__pcssOriginalOnBeforeCompile
-        delete material.userData.__pcssOriginalOnBeforeCompile
-        material.needsUpdate = true
-      }
-    })
   })
 </script>
-
-<!--
-	@component
-	This component injects Percentage-Closer Soft Shadows (PCSS) into
-	Three.js' shader chunk. Mounting and unmounting this component will lead to
-	all shaders being be re-compiled, although it will only cause overhead if
-	`<SoftShadows>` is mounted after the scene has already rendered, if it mounts
-	with everything else in your scene shaders will compile naturally.
--->
