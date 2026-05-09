@@ -16,11 +16,11 @@
 			https://www.shadertoy.com/view/tt3fDH [spawner64]
 -->
 <script lang="ts">
-  import { useThrelte } from '@threlte/core'
+  import { useThrelte, useTask } from '@threlte/core'
   import { onDestroy } from 'svelte'
-  import { ShaderChunk } from 'three'
+  import { BasicShadowMap, ShaderChunk } from 'three'
 
-  const { renderer, camera, scene } = useThrelte()
+  const { renderer, scene } = useThrelte()
 
   interface Props {
     /** Size of the light source (the larger the softer the light), default: 25 */
@@ -36,7 +36,20 @@
   // get the original shader chunk
   const original = ShaderChunk.shadowmap_pars_fragment
 
+  // Three.js modernized shadow mapping between r175 and r183 (PRs #32181/#32303
+  // /#32407/#32443): `unpackRGBAToDepth` was removed, the PCF branch now uses
+  // `sampler2DShadow` (hardware comparison only — no raw depth reads), and the
+  // BASIC branch reads depth directly via `.r`. Detect once and pick the right
+  // sampling path + injection target.
+  const isLegacyChunk = original.includes('unpackRGBAToDepth')
+  const sampleDepth = isLegacyChunk
+    ? 'unpackRGBAToDepth(texture2D(shadowMap, '
+    : 'texture2D(shadowMap, '
+  const sampleDepthSuffix = isLegacyChunk ? '))' : ').r'
+
   let pcss = $derived(`
+		uniform float pcssTime;
+
 		#define PENUMBRA_FILTER_SIZE float(${size})
 		#define RGB_NOISE_FUNCTION(uv) (randRGB(uv))
 		vec3 randRGB(vec2 uv) {
@@ -93,7 +106,7 @@
 			#pragma unroll_loop_start
 			for(int i = 0; i < ${samples}; i ++) {
 				offset = (vogelDiskSample(j, ${samples}, angle) * texelSize) * 2.0 * PENUMBRA_FILTER_SIZE;
-				depth = unpackRGBAToDepth( texture2D( shadowMap, uv + offset));
+				depth = ${sampleDepth}uv + offset${sampleDepthSuffix};
 				if (depth < compare) {
 					blockerDepthSum += depth;
 					blockers++;
@@ -119,7 +132,7 @@
 			for (int i = 0; i < ${samples}; i++) {
 				vogelSample = vogelDiskSample(j, ${samples}, angle) * texelSize;
 				offset = vogelSample * (1.0 + filterRadius * float(${size}));
-				shadow += step( zReceiver, unpackRGBAToDepth( texture2D( shadowMap, uv + offset ) ) );
+				shadow += step( zReceiver, ${sampleDepth}uv + offset${sampleDepthSuffix} );
 				j++;
 			}
 			#pragma unroll_loop_end
@@ -129,7 +142,9 @@
 		float PCSS (sampler2D shadowMap, vec4 coords) {
 			vec2 uv = coords.xy;
 			float zReceiver = coords.z; // Assumed to be eye-space z in this code
-			float angle = highPassRandRGB(gl_FragCoord.xy).r * PI2;
+			// Shift the noise seed every frame so the shimmer pattern moves; the
+			// eye integrates the per-frame noise into a smoother shadow.
+			float angle = highPassRandRGB(gl_FragCoord.xy + vec2(pcssTime * 67.0, pcssTime * 113.0)).r * PI2;
 			float avgBlockerDepth = findBlocker(shadowMap, uv, zReceiver, angle);
 			if (avgBlockerDepth == -1.0) {
 				return 1.0;
@@ -138,31 +153,106 @@
 			return vogelFilter(shadowMap, uv, zReceiver, 1.25 * penumbraRatio, angle);
 	}`)
 
-  const recompile = () => {
-    scene.traverse((o) => {
-      const object = o as any
-      if ((object as any).material) {
-        renderer?.properties.remove(object.material)
-        object.material.dispose?.()
+  // Per-shader `pcssTime` uniform refs, populated as materials compile via the
+  // `onBeforeCompile` hook below. We update each one every frame.
+  const timeUniforms: { value: number }[] = []
+
+  const wrapOnBeforeCompile = (material: any) => {
+    if (material.userData.__pcssOriginalOnBeforeCompile === undefined) {
+      material.userData.__pcssOriginalOnBeforeCompile = material.onBeforeCompile
+    }
+    const originalOnBeforeCompile = material.userData.__pcssOriginalOnBeforeCompile
+    material.onBeforeCompile = function (shader: any, r: any) {
+      originalOnBeforeCompile?.call(this, shader, r)
+      shader.uniforms.pcssTime = { value: 0 }
+      timeUniforms.push(shader.uniforms.pcssTime)
+    }
+  }
+
+  const eachMaterial = (callback: (material: any) => void) => {
+    scene.traverse((object: any) => {
+      const material = object.material
+      if (!material) return
+      if (Array.isArray(material)) {
+        for (const m of material) callback(m)
+      } else {
+        callback(material)
       }
     })
-    if (renderer?.info.programs) renderer!.info.programs.length = 0
-    renderer?.compile(scene, camera.current)
+  }
+
+  // Mark every material for re-link without disposing it. Disposal would strip
+  // `onBeforeCompile` injections and break materials that share uniform
+  // references with user code; `needsUpdate` discards only the cached program
+  // and re-runs `onBeforeCompile` on the next render.
+  const recompile = () => {
+    timeUniforms.length = 0
+    eachMaterial((material) => {
+      wrapOnBeforeCompile(material)
+      material.needsUpdate = true
+    })
   }
 
   $effect.pre(() => {
-    ShaderChunk.shadowmap_pars_fragment = original
-      .replace('#ifdef USE_SHADOWMAP', `#ifdef USE_SHADOWMAP\n${pcss}`)
-      .replace(
+    // On modern (r183+) chunks the PCF branch binds the shadow map as
+    // `sampler2DShadow`, which doesn't allow raw depth reads — PCSS needs
+    // those, so force `BasicShadowMap` (which binds as `sampler2D`). Legacy
+    // chunks use `sampler2D` for every shadow type, so we leave the user's
+    // configured shadow type alone.
+    let previousShadowMapType: typeof renderer.shadowMap.type | null = null
+    if (!isLegacyChunk) {
+      previousShadowMapType = renderer.shadowMap.type
+      renderer.shadowMap.type = BasicShadowMap
+    }
+
+    let modified = original.replace('#ifdef USE_SHADOWMAP', `#ifdef USE_SHADOWMAP\n${pcss}`)
+    if (isLegacyChunk) {
+      // Legacy chunks have a single getShadow() with branches per shadow type;
+      // inject right inside `if (frustumTest) {` ahead of the PCF branch so
+      // the early `return` short-circuits whichever branch was selected.
+      modified = modified.replace(
         '#if defined( SHADOWMAP_TYPE_PCF )',
         '\nreturn PCSS(shadowMap, shadowCoord);\n#if defined( SHADOWMAP_TYPE_PCF )'
       )
+    } else {
+      // Modern chunks have a dedicated BASIC getShadow() with a `sampler2D
+      // shadowMap` that we can read raw depth from; inject before its depth
+      // lookup so PCSS replaces the per-pixel comparison.
+      modified = modified.replace(
+        'float depth = texture2D( shadowMap, shadowCoord.xy ).r;',
+        `return PCSS( shadowMap, shadowCoord );\n\t\t\t\tfloat depth = texture2D( shadowMap, shadowCoord.xy ).r;`
+      )
+    }
+    ShaderChunk.shadowmap_pars_fragment = modified
     recompile()
+
+    return () => {
+      if (previousShadowMapType !== null) {
+        renderer.shadowMap.type = previousShadowMapType
+      }
+    }
+  })
+
+  // Drive the noise seed forward every frame. Per-frame variation lets the
+  // eye/display integrate the noisy PCSS samples into a smoother-looking
+  // shadow even though no temporal accumulation buffer is used.
+  let pcssTimeValue = 0
+  useTask((delta) => {
+    pcssTimeValue += delta
+    for (let i = 0; i < timeUniforms.length; i++) {
+      timeUniforms[i]!.value = pcssTimeValue
+    }
   })
 
   onDestroy(() => {
     ShaderChunk.shadowmap_pars_fragment = original
-    recompile()
+    eachMaterial((material) => {
+      if (material.userData.__pcssOriginalOnBeforeCompile !== undefined) {
+        material.onBeforeCompile = material.userData.__pcssOriginalOnBeforeCompile
+        delete material.userData.__pcssOriginalOnBeforeCompile
+        material.needsUpdate = true
+      }
+    })
   })
 </script>
 

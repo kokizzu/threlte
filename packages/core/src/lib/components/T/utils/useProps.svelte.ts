@@ -75,6 +75,7 @@ export const useProps = <Type>(
       memoizedProps.delete(propertyPath)
     }
 
+    // Inlined resolvePropertyPath. Avoids function + object allocation tax
     let target: any = instance
     let key = propertyPath
     const hasDot = propertyPath.includes('.')

@@ -14,8 +14,6 @@ export const useAttach = <T extends MaybeInstance<any>>(
   attach: () => BaseProps<T>['attach']
 ) => {
   const { invalidate } = useScheduler()
-  //const ref = $derived(getRef())
-  // const attach = $derived(getAttach())
   const parent = useParent()
   const parentObject3D = useParentObject3D()
 
