@@ -25,13 +25,13 @@
 
   const renderTarget = new WebGLCubeRenderTarget(1)
   $effect(() => {
-    return () => {
-      renderTarget.dispose()
-    }
+    renderTarget.setSize(resolution, resolution)
   })
 
   $effect(() => {
-    renderTarget.setSize(resolution, resolution)
+    return () => {
+      renderTarget.dispose()
+    }
   })
 
   export const camera = useCubeCamera(
@@ -84,6 +84,6 @@
   is={scene}
   attach={visible ? undefined : false}
 >
-  <T is={camera} />
+  <T is={camera.current} />
   {@render children?.({ camera, restart, update })}
 </T>

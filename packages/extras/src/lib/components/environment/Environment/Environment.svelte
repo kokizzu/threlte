@@ -31,6 +31,7 @@
   }: EquirectangularEnvironmentProps = $props()
 
   const suspend = useSuspense()
+
   const cache = useCache()
 
   useEnvironment(
@@ -62,9 +63,10 @@
       }, [url])
     )
 
-    const promise = suspendedTexture.then((texture) => {
-      texture.mapping = EquirectangularReflectionMapping
-      return texture
+    const promise = suspendedTexture.then((t) => {
+      t.mapping = EquirectangularReflectionMapping
+      texture = t
+      return t
     })
 
     return () => {

@@ -13,7 +13,7 @@ const DEFAULT_FAR = 1000
  * let far = $state(1000)
  * const renderTarget = new WebGLCubeRenderTarget(512);
  * const camera = useCubeCamera(() => near, () => far, () => renderTarget);
- * useTask(() => { camera.current.update(renderer, scene); })
+ * useTask(() => { camera.update(renderer, scene); })
  * </script>
  * ```
  * @return an object with a property `current` that is a getter to the derived cubeCamera

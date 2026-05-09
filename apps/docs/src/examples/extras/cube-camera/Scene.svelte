@@ -8,6 +8,8 @@
     puresky: 'mpumalanga_veld_puresky_1k.hdr'
   } as const
 
+  const hdrPath = '/textures/equirectangular/hdr/'
+
   const isHdrKey = (u: PropertyKey): u is keyof typeof hdrs => {
     return u in hdrs
   }
@@ -35,6 +37,7 @@
     hdr = 'auto',
     metalness = 1,
     near = 0.1,
+    far = 1000,
     resolution = 256,
     roughness = 0
   }: Props = $props()
@@ -54,8 +57,6 @@
       i += 1
     }
   })
-
-  const hdrPath = '/textures/equirectangular/hdr/'
 
   const loader = useLoader(RGBELoader, {
     extend(loader) {
@@ -121,6 +122,7 @@
         {background}
         {frames}
         {near}
+        {far}
         {resolution}
       >
         {#snippet children({ camera })}

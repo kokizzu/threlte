@@ -18,12 +18,11 @@
     ...props
   }: CubeCameraProps = $props()
 
-  const renderTarget = new WebGLCubeRenderTarget(1)
+  const renderTarget = new WebGLCubeRenderTarget(512)
   $effect(() => {
-    renderTarget.setSize(resolution, resolution)
-  })
-  $effect(() => {
-    return () => renderTarget.dispose()
+    return () => {
+      renderTarget.dispose()
+    }
   })
 
   export const camera = useCubeCamera(
@@ -85,11 +84,11 @@
   bind:ref
   {...props}
 >
-  <T is={camera} />
+  <T is={camera.current} />
   <T is={inner}>
     {@render children?.({
       camera,
-      ref: group,
+      ref: inner,
       restart,
       update
     })}
