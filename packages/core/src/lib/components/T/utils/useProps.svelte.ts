@@ -1,9 +1,6 @@
 import { EventDispatcher } from 'three'
 import { useScheduler } from '../../../context/fragments/scheduler.svelte.js'
-import { resolvePropertyPath } from '../../../utilities/resolvePropertyPath.js'
 import { untrack } from 'svelte'
-
-const ignoredProps = new Set(['$$scope', '$$slots', 'type', 'args', 'attach', 'instance'])
 
 /**
  * Only scalar values are memoized. Objects/functions/arrays are treated as dynamic
@@ -78,16 +75,25 @@ export const useProps = <Type>(
       memoizedProps.delete(propertyPath)
     }
 
-    const { key, target } = resolvePropertyPath(instance, propertyPath)
+    let target: any = instance
+    let key = propertyPath
+    const hasDot = propertyPath.includes('.')
+    if (hasDot) {
+      const path = propertyPath.split('.')
+      key = path.pop() as string
+      for (let i = 0; i < path.length; i++) {
+        target = target[path[i]]
+        if (target == null) {
+          console.error(`Cannot resolve property path "${propertyPath}": "${path[i]}" is ${target}`)
+          return
+        }
+      }
+    }
 
-    /**
-     * If we can determine that this is an event listener prop,
-     * attach it.
-     */
     if (
       typeof value === 'function' &&
       key.startsWith('on') &&
-      !propertyPath.includes('.') &&
+      !hasDot &&
       'addEventListener' in (target as EventDispatcher)
     ) {
       const dispatcher = target as EventDispatcher<Record<string, any>>
@@ -122,7 +128,7 @@ export const useProps = <Type>(
     untrack(() => {
       for (const key in _props) {
         $effect.pre(() => {
-          if (_pluginProps?.includes(key) || ignoredProps.has(key)) {
+          if (_pluginProps?.includes(key)) {
             return
           }
 
