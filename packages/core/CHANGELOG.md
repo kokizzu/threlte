@@ -1,5 +1,11 @@
 # @threlte/core
 
+## 8.5.14
+
+### Patch Changes
+
+- aad1053: Perf: remove unnecessary effects in T component
+
 ## 8.5.13
 
 ### Patch Changes
