@@ -139,21 +139,27 @@
 			return shadow * float(${invSamples});
 	}`)
 
-  // Mark every existing material for re-link so they pick up the new chunk.
-  // `needsUpdate = true` discards only the cached program; it preserves user
-  // `onBeforeCompile` injections and shared uniform references (which
-  // `material.dispose()` would destroy). Materials added after this runs will
-  // compile against the new chunk on their first render automatically.
+  // Three.js's program cache key is derived from material properties, not
+  // ShaderChunk source. To force a fresh compile against the modified chunk
+  // we drop each material's renderer-side properties (which hold its program
+  // ref) and empty the program cache. We avoid `material.dispose()` so user
+  // `onBeforeCompile` injections and shared uniform references are preserved.
+  const forceFreshCompile = (material: any) => {
+    renderer.properties.remove(material)
+    material.needsUpdate = true
+  }
+
   const recompile = () => {
     scene.traverse((object: any) => {
       const material = object.material
       if (!material) return
       if (Array.isArray(material)) {
-        for (const m of material) m.needsUpdate = true
+        for (const m of material) forceFreshCompile(m)
       } else {
-        material.needsUpdate = true
+        forceFreshCompile(material)
       }
     })
+    renderer.info.programs!.length = 0
   }
 
   $effect(() => {
