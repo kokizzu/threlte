@@ -128,13 +128,11 @@ export const useProps = <Type>(
 
     untrack(() => {
       for (const key in _props) {
-        $effect.pre(() => {
-          if (_pluginProps?.includes(key)) {
-            return
-          }
-
-          return setProp(_object, key, _props[key])
-        })
+        // Skip plugin-reserved props at setup time. `pluginProps` is captured
+        // once at component init and never mutates, so there's no reason to
+        // re-check on every prop change.
+        if (_pluginProps?.includes(key)) continue
+        $effect.pre(() => setProp(_object, key, _props[key]))
       }
     })
   })
