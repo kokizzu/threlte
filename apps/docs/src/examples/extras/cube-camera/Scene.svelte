@@ -74,18 +74,17 @@
 
 <T.PerspectiveCamera
   makeDefault
-  position={[10, 5, 10]}
-  fov={30}
->
-  <OrbitControls
-    enableDamping
-    target.y={0.5}
-    autoRotate
-    enablePan={false}
-    enableZoom={false}
-    autoRotateSpeed={0.1}
-  />
-</T.PerspectiveCamera>
+  position={[8, 5, 8]}
+/>
+
+<OrbitControls
+  enableDamping
+  target.y={0.5}
+  autoRotate
+  enablePan={false}
+  enableZoom={false}
+  autoRotateSpeed={0.1}
+/>
 
 <Environment url={`${hdrPath}shanghai_riverside_1k.hdr`} />
 
@@ -95,21 +94,21 @@
   cellColor="#fff"
 />
 
+{#each colors as color, i}
+  {@const r = increment * i}
+  <T.Mesh
+    position.x={radius * Math.cos(r)}
+    position.y={i}
+    position.z={radius * Math.sin(r)}
+  >
+    <T.MeshStandardMaterial {color} />
+    <T.SphereGeometry />
+  </T.Mesh>
+{/each}
+
 {#await backgrounds then backgroundMap}
   {@const background = isHdrKey(hdr) ? backgroundMap[hdr] : hdr}
-  {#each colors as color, i}
-    {@const r = increment * i}
-    <T.Mesh
-      position.x={radius * Math.cos(r)}
-      position.y={i}
-      position.z={radius * Math.sin(r)}
-    >
-      <T.MeshStandardMaterial {color} />
-      <T.SphereGeometry />
-    </T.Mesh>
-  {/each}
-
-  {#each Array(colors.length) as _, i}
+  {#each colors, i}
     {@const r = Math.PI + increment * i}
     <T.Group
       position.x={radius * Math.cos(r)}

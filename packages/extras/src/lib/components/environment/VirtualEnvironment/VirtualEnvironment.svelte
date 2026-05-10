@@ -23,7 +23,7 @@
   // Create a parent scene to render the virtual environment into
   const { scene } = createSceneContext()
 
-  const renderTarget = new WebGLCubeRenderTarget(1)
+  const renderTarget = new WebGLCubeRenderTarget()
   $effect(() => {
     renderTarget.setSize(resolution, resolution)
   })
@@ -85,5 +85,9 @@
   attach={visible ? undefined : false}
 >
   <T is={camera.current} />
-  {@render children?.({ camera, restart, update })}
+  {@render children?.({
+    camera,
+    restart,
+    update
+  })}
 </T>

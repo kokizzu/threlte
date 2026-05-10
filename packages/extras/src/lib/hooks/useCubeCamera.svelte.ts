@@ -1,18 +1,23 @@
 import { CubeCamera, WebGLCubeRenderTarget } from 'three'
 import { isInstanceOf } from '@threlte/core'
 
-const DEFAULT_NEAR = 1
-const DEFAULT_FAR = 1000
+// these are the defaults for both PerspectiveCamera and OrthographicCamera
+const DEFAULT_NEAR = 0.1
+const DEFAULT_FAR = 2000
 
 /**
  * creates a derived CubeCamera instance
+ *
  * @example
+ *
  * ```svelte
  * <script>
- * let near = $state(0.1)
- * let far = $state(1000)
+ * let near = $state(0.1);
+ * let far = $state(1000);
  * const renderTarget = new WebGLCubeRenderTarget(512);
  * const camera = useCubeCamera(() => near, () => far, () => renderTarget);
+ *
+ * // render to the target each frame
  * useTask(() => { camera.update(renderer, scene); })
  * </script>
  * ```

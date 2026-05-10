@@ -18,7 +18,7 @@
     ...props
   }: CubeCameraProps = $props()
 
-  const renderTarget = new WebGLCubeRenderTarget(512)
+  const renderTarget = new WebGLCubeRenderTarget()
   $effect(() => {
     return () => {
       renderTarget.dispose()
@@ -30,6 +30,10 @@
     () => near,
     () => far
   )
+
+  $effect(() => {
+    renderTarget.setSize(resolution, resolution)
+  })
 
   const { renderer, scene } = useThrelte()
 
