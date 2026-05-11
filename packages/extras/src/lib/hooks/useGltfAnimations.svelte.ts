@@ -125,14 +125,14 @@ export function useGltfAnimations<
   $effect(() => {
     if (!_gltf || _gltf.animations.length === 0 || !actualRoot) return
 
-    const newActions: Actions = {} as Actions
+    const newActions: Partial<Record<T, AnimationAction>> = {}
 
     for (const clip of _gltf.animations) {
       const action = mixer.clipAction(clip, actualRoot)
       newActions[clip.name as T] = action
     }
 
-    actions = newActions
+    actions = newActions as Actions
 
     return () => {
       for (const action of Object.values(newActions) as AnimationAction[]) {
