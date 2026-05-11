@@ -35,6 +35,36 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
 ) => {
   let loaded = $state(false)
   let shouldPlay = $state(false)
+  let audioDestroyed = false
+  let audioEpoch = 0
+
+  const isCurrentAudio = (currentAudio: T, epoch: number) => {
+    return !audioDestroyed && epoch === audioEpoch && currentAudio === audio()
+  }
+
+  const stopAudio = (currentAudio: T | undefined) => {
+    if (!currentAudio) return
+
+    if (!currentAudio.source) {
+      return currentAudio
+    }
+
+    return currentAudio.stop()
+  }
+
+  $effect(() => {
+    const currentAudio = audio()
+    audioEpoch += 1
+
+    return () => {
+      audioEpoch += 1
+      try {
+        stopAudio(currentAudio)
+      } catch (error) {
+        console.warn('Error while destroying audio', error)
+      }
+    }
+  })
 
   $effect(() => {
     audio()?.setVolume(volume())
@@ -70,14 +100,13 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
     setSrc(src())
   })
 
-  let audioDestroyed = false
-
   const loader = useLoader(AudioLoader)
 
   const setSrc = async (source: AudioProps['src']) => {
     loaded = false
 
     const currentAudio = audio()
+    const epoch = audioEpoch
 
     if (!currentAudio) return
 
@@ -90,14 +119,19 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
             onprogress?.(event)
           }
         })
+        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setBuffer(audioBuffer)
       } else if (source instanceof AudioBuffer) {
+        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setBuffer(source)
       } else if (source instanceof HTMLMediaElement) {
+        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setMediaElementSource(source)
       } else if (source instanceof AudioBufferSourceNode) {
+        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setNodeSource(source)
       } else if (source instanceof MediaStream) {
+        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setMediaStreamSource(source)
       }
       loaded = true
@@ -116,12 +150,13 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
     }
 
     const currentAudio = audio()
+    const epoch = audioEpoch
 
     if (!currentAudio) return
 
     if (currentAudio.context.state !== 'running') {
       await currentAudio.context.resume()
-      if (audioDestroyed) {
+      if (!isCurrentAudio(currentAudio, epoch)) {
         return
       }
     }
@@ -134,25 +169,12 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
   }
 
   const stop = () => {
-    const currentAudio = audio()
-
-    if (!currentAudio) return
-
-    if (!currentAudio.source) {
-      return currentAudio
-    }
-
-    return currentAudio.stop()
+    return stopAudio(audio())
   }
 
   $effect(() => {
     return () => {
-      try {
-        audioDestroyed = true
-        stop()
-      } catch (error) {
-        console.warn('Error while destroying audio', error)
-      }
+      audioDestroyed = true
     }
   })
 

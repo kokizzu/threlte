@@ -60,7 +60,7 @@ export function useFBO(
     : () => optionsArg ?? {}
 
   const { depth, size: userSize, ...targetOptions } = $derived(getOptions())
-  const target = $derived(new WebGLRenderTarget(1, 1, targetOptions))
+  const target = new WebGLRenderTarget(1, 1, targetOptions)
 
   const { dpr: dprStore, size: sizeStore } = useThrelte()
   const dpr = fromStore(dprStore)

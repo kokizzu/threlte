@@ -1,21 +1,16 @@
-import { currentWritable, useTask, observe, type CurrentWritable } from '@threlte/core'
-import { derived, writable, type Writable } from 'svelte/store'
-import { AnimationMixer, type AnimationAction, type Object3D } from 'three'
+import { useTask, isInstanceOf } from '@threlte/core'
+import { fromStore, toStore, type Readable, type Writable } from 'svelte/store'
+import { AnimationMixer, Object3D, type AnimationAction } from 'three'
 import type { ThrelteGltf } from '../types/types.js'
-
-type Root = Object3D
-type GltfStore = Writable<ThrelteGltf | undefined>
 
 type UseGltfAnimationsReturnType<Actions> = {
   gltf: Writable<ThrelteGltf | undefined>
   mixer: AnimationMixer
-  actions: CurrentWritable<Actions>
-  root: CurrentWritable<Root | undefined>
+  actions: Readable<Actions>
+  root: Writable<Object3D | undefined>
 }
 
-const isRoot = (value: unknown): value is Root => !!(value as { isObject3D?: boolean })?.isObject3D
-
-const isGltfStore = (value: unknown): value is GltfStore =>
+const isStore = (value: unknown): value is Writable<ThrelteGltf | undefined> =>
   typeof (value as { subscribe?: unknown })?.subscribe === 'function'
 
 const isGetter = <T>(value: unknown): value is () => T => typeof value === 'function'
@@ -81,7 +76,7 @@ export function useGltfAnimations<
 export function useGltfAnimations<
   T extends string,
   Actions extends Partial<Record<T, AnimationAction>> = Partial<Record<T, AnimationAction>>
->(root?: Root): UseGltfAnimationsReturnType<Actions>
+>(root?: Object3D): UseGltfAnimationsReturnType<Actions>
 /**
  * @deprecated Pass `gltf` as a getter function instead. This signature will be
  * removed in Threlte 9.
@@ -99,74 +94,53 @@ export function useGltfAnimations<
 export function useGltfAnimations<
   T extends string,
   Actions extends Partial<Record<T, AnimationAction>> = Partial<Record<T, AnimationAction>>
->(gltf: GltfStore, root?: Root): UseGltfAnimationsReturnType<Actions>
+>(gltf: Writable<ThrelteGltf | undefined>, root?: Object3D): UseGltfAnimationsReturnType<Actions>
 
 export function useGltfAnimations<
   T extends string,
   Actions extends Partial<Record<T, AnimationAction>> = Partial<Record<T, AnimationAction>>
 >(
-  gltfArg?: (() => ThrelteGltf | undefined) | GltfStore | Root,
-  rootArg?: (() => Object3D | undefined) | Root
+  gltf?: (() => ThrelteGltf | undefined) | Writable<ThrelteGltf | undefined> | Object3D,
+  root?: (() => Object3D | undefined) | Object3D
 ): UseGltfAnimationsReturnType<Actions> {
-  const gltfGetter =
-    !isGltfStore(gltfArg) && isGetter<ThrelteGltf | undefined>(gltfArg) ? gltfArg : undefined
-  const rootGetter = isGetter<Object3D | undefined>(rootArg) ? rootArg : undefined
+  let _gltf = $derived<ThrelteGltf | undefined>(
+    isStore(gltf) ? fromStore(gltf).current : isGetter(gltf) ? gltf() : undefined
+  )
+  let _root = $derived<Object3D | undefined>(
+    isInstanceOf(gltf, 'Object3D')
+      ? gltf
+      : isStore(root)
+        ? (fromStore(root).current as unknown as Object3D)
+        : isGetter(root)
+          ? root()
+          : undefined
+  )
 
-  const gltf: Writable<ThrelteGltf | undefined> = isGltfStore(gltfArg)
-    ? gltfArg
-    : writable<ThrelteGltf | undefined>(gltfGetter?.())
+  const actualRoot = $derived(_root ?? _gltf?.scene)
 
-  const initialRoot = isRoot(gltfArg) ? gltfArg : isRoot(rootArg) ? rootArg : rootGetter?.()
-  const root = currentWritable<Root | undefined>(initialRoot)
+  let actions = $state.raw<Actions>({} as Actions)
 
-  if (gltfGetter) {
-    observe(
-      () => [gltfGetter()],
-      ([value]) => {
-        gltf.set(value)
-      }
-    )
-  }
-
-  if (rootGetter) {
-    observe(
-      () => [rootGetter()],
-      ([value]) => {
-        root.set(value)
-      }
-    )
-  }
-
-  const actualRoot = derived([root, gltf], ([root, gltf]) => {
-    return root ?? gltf?.scene
-  })
-
-  const actions = currentWritable<Actions>({} as Actions)
   const mixer = new AnimationMixer(undefined as unknown as Object3D)
 
-  observe(
-    () => [gltf, actualRoot],
-    ([gltf, actualRoot]) => {
-      if (!gltf || !gltf.animations.length || !actualRoot) return
+  $effect(() => {
+    if (!_gltf || _gltf.animations.length === 0 || !actualRoot) return
 
-      const newActions = gltf.animations.reduce((acc, clip) => {
-        const action = mixer.clipAction(clip, actualRoot)
-        return {
-          ...acc,
-          [clip.name as T]: action
-        }
-      }, {} as Actions)
-      actions.set(newActions)
+    const newActions: Actions = {} as Actions
 
-      return () => {
-        Object.values(newActions).forEach((a) => {
-          const action = a as AnimationAction
-          action.stop()
-          mixer.uncacheClip(action.getClip())
-        })
+    for (const clip of _gltf.animations) {
+      const action = mixer.clipAction(clip, actualRoot)
+      newActions[clip.name as T] = action
+    }
+
+    actions = newActions
+
+    return () => {
+      for (const action of Object.values(newActions) as AnimationAction[]) {
+        action.stop()
+        mixer.uncacheClip(action.getClip())
       }
     }
-  )
+  })
 
   useTask(
     (delta) => {
@@ -179,13 +153,29 @@ export function useGltfAnimations<
     /**
      * @deprecated This property will be removed in Threlte 9
      */
-    gltf,
+    gltf: {
+      ...toStore(() => _gltf),
+      set(value) {
+        _gltf = value
+      },
+      update(updater) {
+        _gltf = updater(_gltf)
+      }
+    },
 
     /**
      * @deprecated This property will be removed in Threlte 9
      */
-    root,
+    root: {
+      ...toStore(() => _root),
+      set(value) {
+        _root = value
+      },
+      update(updater) {
+        _root = updater(_root)
+      }
+    },
     mixer,
-    actions
+    actions: toStore(() => actions)
   }
 }
