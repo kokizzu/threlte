@@ -42,10 +42,12 @@
   )
 </script>
 
-<T
-  is={audio}
-  bind:ref
-  {...rest}
->
-  {@render children?.({ ref: audio })}
-</T>
+{#if audio}
+  <T
+    is={audio}
+    bind:ref
+    {...rest}
+  >
+    {@render children?.({ ref: audio })}
+  </T>
+{/if}
