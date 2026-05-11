@@ -1,5 +1,11 @@
 # @threlte/extras
 
+## 9.17.0
+
+### Minor Changes
+
+- 6de99ec: Add runes-based reactivity for Audio, PositionalAudio, useFBO, and useGltfAnimations props
+
 ## 9.16.0
 
 ### Minor Changes
