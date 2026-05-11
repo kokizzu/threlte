@@ -94,11 +94,11 @@
   cellColor="#fff"
 />
 
-{#each colors as color, i}
-  {@const r = increment * i}
+{#each colors as color, index}
+  {@const r = increment * index}
   <T.Mesh
     position.x={radius * Math.cos(r)}
-    position.y={i}
+    position.y={index}
     position.z={radius * Math.sin(r)}
   >
     <T.MeshStandardMaterial {color} />
@@ -108,8 +108,8 @@
 
 {#await backgrounds then backgroundMap}
   {@const background = isHdrKey(hdr) ? backgroundMap[hdr] : hdr}
-  {#each colors, i}
-    {@const r = Math.PI + increment * i}
+  {#each colors, index}
+    {@const r = Math.PI + increment * index}
     <T.Group
       position.x={radius * Math.cos(r)}
       position.z={radius * Math.sin(r)}
@@ -124,13 +124,13 @@
         {far}
         {resolution}
       >
-        {#snippet children({ camera })}
+        {#snippet children({ renderTarget })}
           <T.Mesh>
             <T.SphereGeometry />
             <T.MeshStandardMaterial
               {roughness}
               {metalness}
-              envMap={camera.current.renderTarget.texture}
+              envMap={renderTarget.texture}
             />
           </T.Mesh>
         {/snippet}

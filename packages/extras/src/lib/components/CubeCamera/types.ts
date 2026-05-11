@@ -1,17 +1,18 @@
 import type { Props } from '@threlte/core'
 import type { Group, Scene, CubeCamera } from 'three'
 
-export type CubeCameraProps = Props<
+export interface CubeCameraProps extends Props<
   Group,
   [
     {
-      camera: { current: CubeCamera }
+      camera: CubeCamera
+      renderTarget: CubeCamera['renderTarget']
       ref: Group
       restart(): void
       update(): void
     }
   ]
-> & {
+> {
   /**
    * background that will be set before rendering to the render target. a value of `'auto'` will use the current background
    * @default 'auto'

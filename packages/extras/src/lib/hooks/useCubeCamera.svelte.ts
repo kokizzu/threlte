@@ -1,9 +1,6 @@
 import { CubeCamera, WebGLCubeRenderTarget } from 'three'
 import { isInstanceOf } from '@threlte/core'
-
-// these are the defaults for both PerspectiveCamera and OrthographicCamera
-const DEFAULT_NEAR = 0.1
-const DEFAULT_FAR = 2000
+import { untrack } from 'svelte'
 
 /**
  * creates a derived CubeCamera instance
@@ -24,35 +21,44 @@ const DEFAULT_FAR = 2000
  * @return an object with a property `current` that is a getter to the derived cubeCamera
  */
 export const useCubeCamera = (
-  renderTarget: () => WebGLCubeRenderTarget,
-  near = () => DEFAULT_FAR,
-  far = () => DEFAULT_FAR
+  resolution: () => number | undefined,
+  near: () => number | undefined,
+  far: () => number | undefined
 ) => {
-  const camera = $derived(new CubeCamera(DEFAULT_NEAR, DEFAULT_FAR, renderTarget()))
+  const currentResolution = $derived(resolution() ?? 256)
+  const currentNear = $derived(near() ?? 0.1)
+  const currentFar = $derived(far() ?? 2000)
+
+  const renderTarget = new WebGLCubeRenderTarget(untrack(() => currentResolution))
+
+  const camera = new CubeCamera(
+    untrack(() => currentNear),
+    untrack(() => currentFar),
+    renderTarget
+  )
 
   $effect(() => {
-    const _near = near()
+    renderTarget.setSize(currentResolution, currentResolution)
+  })
+
+  $effect(() => {
     for (const child of camera.children) {
       if (isInstanceOf(child, 'PerspectiveCamera')) {
-        child.near = _near
+        child.near = currentNear
+        child.far = currentFar
         child.updateProjectionMatrix()
       }
     }
   })
 
   $effect(() => {
-    const _far = far()
-    for (const child of camera.children) {
-      if (isInstanceOf(child, 'PerspectiveCamera')) {
-        child.far = _far
-        child.updateProjectionMatrix()
-      }
+    return () => {
+      renderTarget.dispose()
     }
   })
 
   return {
-    get current() {
-      return camera
-    }
+    camera,
+    renderTarget
   }
 }

@@ -23,7 +23,7 @@
 
   let {
     skybox = $bindable(),
-    texture = $bindable(null),
+    texture = $bindable(),
     ground = false,
     isBackground = false,
     scene = ctx.scene,

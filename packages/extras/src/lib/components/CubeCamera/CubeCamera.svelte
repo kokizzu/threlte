@@ -1,39 +1,28 @@
 <script lang="ts">
   import type { CubeCameraProps } from './types.js'
-  import { Group, WebGLCubeRenderTarget } from 'three'
+  import { Group } from 'three'
   import { observe, T, useTask, useThrelte } from '@threlte/core'
   import { useCubeCamera } from '../../hooks/useCubeCamera.svelte.js'
 
   let {
     background = 'auto',
-    far = 1000,
+    far,
     fog = 'auto',
     frames = Infinity,
-    near = 0.1,
+    near,
     onupdatestart,
     onupdatestop,
-    resolution = 256,
+    resolution,
     children,
     ref = $bindable(),
     ...props
   }: CubeCameraProps = $props()
 
-  const renderTarget = new WebGLCubeRenderTarget()
-  $effect(() => {
-    return () => {
-      renderTarget.dispose()
-    }
-  })
-
-  export const camera = useCubeCamera(
-    () => renderTarget,
+  export const { camera, renderTarget } = useCubeCamera(
+    () => resolution,
     () => near,
     () => far
   )
-
-  $effect(() => {
-    renderTarget.setSize(resolution, resolution)
-  })
 
   const { renderer, scene } = useThrelte()
 
@@ -53,7 +42,7 @@
       if (fog !== 'auto') scene.fog = fog
 
       inner.visible = false
-      camera.current.update(renderer, scene)
+      camera.update(renderer, scene)
 
       scene.background = lastBackground
       scene.fog = lastFog
@@ -80,7 +69,7 @@
   }
 
   // if any of these props update, the task will need to be restarted
-  observe(() => [background, far, near, fog, frames], restart)
+  observe(() => [background, far, near, fog, frames, resolution], restart)
 </script>
 
 <T
@@ -88,10 +77,11 @@
   bind:ref
   {...props}
 >
-  <T is={camera.current} />
+  <T is={camera} />
   <T is={inner}>
     {@render children?.({
       camera,
+      renderTarget,
       ref: inner,
       restart,
       update

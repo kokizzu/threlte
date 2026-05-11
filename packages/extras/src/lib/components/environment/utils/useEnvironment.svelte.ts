@@ -3,30 +3,33 @@ import type { Scene } from 'three'
 
 export const useEnvironment = (
   scene: () => Scene,
-  environment: () => Scene['environment'] = () => null,
-  isBackground = () => false
+  environment: () => Scene['environment'] | undefined,
+  isBackground: () => boolean
 ) => {
   const { invalidate } = useThrelte()
 
   $effect(() => {
-    if (!isBackground()) return
-    const _scene = scene()
-    const lastBackground = _scene.background
-    _scene.background = environment()
-    invalidate()
-    return () => {
-      _scene.background = lastBackground
-      invalidate()
-    }
-  })
+    const currentScene = scene()
+    const { background: lastBackground, environment: lastEnvironment } = currentScene
 
-  $effect(() => {
-    const _scene = scene()
-    const lastEnvironment = _scene.environment
-    _scene.environment = environment()
+    const currentIsBackground = isBackground()
+    const currentEnvironment = environment() ?? null
+
+    currentScene.environment = currentEnvironment
+
+    if (currentIsBackground) {
+      currentScene.background = currentEnvironment
+    }
+
     invalidate()
+
     return () => {
-      _scene.environment = lastEnvironment
+      currentScene.environment = lastEnvironment
+
+      if (currentIsBackground) {
+        currentScene.background = lastBackground
+      }
+
       invalidate()
     }
   })
