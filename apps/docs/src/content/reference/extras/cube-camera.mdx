@@ -89,7 +89,7 @@ through the `renderTarget` snippet prop. Usually you'll only want to use the
 
 ```svelte
 <CubeCamera>
-  {#snippet children({ camera, renderTarget })}
+  {#snippet children({ renderTarget })}
     <T.Mesh>
       <T.SphereGeometry />
       <T.MeshStandardMaterial envMap={renderTarget.texture} />
