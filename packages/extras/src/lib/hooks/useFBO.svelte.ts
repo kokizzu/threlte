@@ -14,41 +14,98 @@ export type UseFBOOptions = RenderTargetOptions & {
   size?: { width?: number; height?: number }
 }
 
-export const useFBO = ({
-  depth = false,
-  size,
-  ...targetOptions
-}: UseFBOOptions = {}): WebGLRenderTarget => {
-  const target = new WebGLRenderTarget(1, 1, targetOptions)
+const isGetter = (value: unknown): value is () => UseFBOOptions | undefined =>
+  typeof value === 'function'
 
-  // first set the width and height because if a depth texture has to be created, it can only have its width and height set in its constructor
-  if (size === undefined) {
-    const { dpr: dprStore, size: sizeStore } = useThrelte()
-    const dpr = fromStore(dprStore)
-    const size = fromStore(sizeStore)
+/**
+ * Creates a `WebGLRenderTarget` whose `size` and `depth` configuration is
+ * tracked through runes — pass `options` as a getter and the FBO updates when
+ * those values change.
+ *
+ * Other render-target construction options (`format`, `type`, `samples`, …)
+ * are read once at hook initialization; later changes to those properties on
+ * the options object are ignored.
+ *
+ * ```svelte
+ * <script lang="ts">
+ *   import { useFBO } from '@threlte/extras'
+ *
+ *   let resolution = $state(512)
+ *   const target = useFBO(() => ({
+ *     size: { width: resolution, height: resolution }
+ *   }))
+ * </script>
+ * ```
+ */
+export function useFBO(options?: () => UseFBOOptions | undefined): WebGLRenderTarget
+/**
+ * @deprecated Pass `options` as a getter function instead. This signature will
+ * be removed in Threlte 9.
+ *
+ * ```ts
+ * // Before
+ * const target = useFBO({ size: { width: 512, height: 512 } })
+ *
+ * // After
+ * const target = useFBO(() => ({ size: { width: 512, height: 512 } }))
+ * ```
+ */
+export function useFBO(options?: UseFBOOptions): WebGLRenderTarget
 
-    $effect.pre(() => {
-      target.setSize(dpr.current * size.current.width, dpr.current * size.current.height)
-    })
-  } else {
-    // handle when width and height are undefined or the user set them to negative numbers
-    const width = Math.max(size.width ?? 1, target.width)
-    const height = Math.max(size.height ?? 1, target.height)
-    target.setSize(width, height)
-  }
+export function useFBO(
+  optionsArg?: UseFBOOptions | (() => UseFBOOptions | undefined)
+): WebGLRenderTarget {
+  const getOptions: () => UseFBOOptions = isGetter(optionsArg)
+    ? () => optionsArg() ?? {}
+    : () => optionsArg ?? {}
 
-  if (depth === true) {
-    target.depthTexture = new DepthTexture(target.width, target.height)
-  } else if (isInstanceOf(depth, 'DepthTexture')) {
-    target.depthTexture = depth
-  } else if (depth !== false) {
-    const width = Math.max(depth.width ?? 1, 1)
-    const height = Math.max(depth.height ?? 1, 1)
-    target.depthTexture = new DepthTexture(width, height)
-  }
+  const { depth, size: userSize, ...targetOptions } = $derived(getOptions())
+  const target = $derived(new WebGLRenderTarget(1, 1, targetOptions))
+
+  const { dpr: dprStore, size: sizeStore } = useThrelte()
+  const dpr = fromStore(dprStore)
+  const canvasSize = fromStore(sizeStore)
 
   $effect(() => {
-    return () => target.dispose()
+    if (userSize === undefined) {
+      target.setSize(
+        dpr.current * canvasSize.current.width,
+        dpr.current * canvasSize.current.height
+      )
+    } else {
+      const width = Math.max(userSize.width ?? 1, 1)
+      const height = Math.max(userSize.height ?? 1, 1)
+      target.setSize(width, height)
+    }
+  })
+
+  $effect(() => {
+    if (depth === true) {
+      const created = new DepthTexture(target.width, target.height)
+      target.depthTexture = created
+      return () => created.dispose()
+    }
+
+    if (isInstanceOf(depth, 'DepthTexture')) {
+      target.depthTexture = depth
+      return
+    }
+
+    if (depth !== false && depth !== undefined) {
+      const width = Math.max(depth.width ?? 1, 1)
+      const height = Math.max(depth.height ?? 1, 1)
+      const created = new DepthTexture(width, height)
+      target.depthTexture = created
+      return () => created.dispose()
+    }
+
+    target.depthTexture = null as unknown as DepthTexture
+    return
+  })
+
+  $effect(() => {
+    const current = target
+    return () => current.dispose()
   })
 
   return target
