@@ -17,7 +17,7 @@
   import type { Group } from 'three'
   import { CubeCamera, Environment, Grid, OrbitControls } from '@threlte/extras'
   import { EquirectangularReflectionMapping } from 'three'
-  import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+  import { RGBELoader } from 'three/examples/jsm/Addons.js'
   import { T, useLoader, useTask } from '@threlte/core'
 
   interface Props {
@@ -80,11 +80,8 @@
 
 <OrbitControls
   enableDamping
-  target.y={0.5}
-  autoRotate
   enablePan={false}
   enableZoom={false}
-  autoRotateSpeed={0.1}
 />
 
 <Environment url={`${hdrPath}shanghai_riverside_1k.hdr`} />

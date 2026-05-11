@@ -70,7 +70,6 @@
     suspendedTexture.then((t) => {
       t.mapping = EquirectangularReflectionMapping
       texture = t
-      return t
     })
 
     return () => {
