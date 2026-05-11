@@ -103,17 +103,10 @@ export function useGltfAnimations<
   gltf?: (() => ThrelteGltf | undefined) | Writable<ThrelteGltf | undefined> | Object3D,
   root?: (() => Object3D | undefined) | Object3D
 ): UseGltfAnimationsReturnType<Actions> {
-  let _gltf = $derived<ThrelteGltf | undefined>(
-    isStore(gltf) ? fromStore(gltf).current : isGetter(gltf) ? gltf() : undefined
-  )
+  const gltfStore = isStore(gltf) ? fromStore(gltf) : undefined
+  let _gltf = $derived<ThrelteGltf | undefined>(isGetter(gltf) ? gltf() : gltfStore?.current)
   let _root = $derived<Object3D | undefined>(
-    isInstanceOf(gltf, 'Object3D')
-      ? gltf
-      : isStore(root)
-        ? (fromStore(root).current as unknown as Object3D)
-        : isGetter(root)
-          ? root()
-          : undefined
+    isInstanceOf(gltf, 'Object3D') ? gltf : isGetter(root) ? root() : undefined
   )
 
   const actualRoot = $derived(_root ?? _gltf?.scene)

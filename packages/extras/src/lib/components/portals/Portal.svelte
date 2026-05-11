@@ -11,6 +11,7 @@
 
   let { id = 'default', object, children }: Props = $props()
 
+  // @Todo Remove in Threlte 9
   $effect.pre(() => {
     if (object) {
       console.error('<Portal>: "object" prop has been removed. Use "attach" instead.')

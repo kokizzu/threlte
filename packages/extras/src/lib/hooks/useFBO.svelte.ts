@@ -75,7 +75,7 @@ export function useFBO(
   const target = new WebGLRenderTarget(
     untrack(() => width),
     untrack(() => height),
-    targetOptions
+    untrack(() => targetOptions)
   )
 
   $effect(() => {

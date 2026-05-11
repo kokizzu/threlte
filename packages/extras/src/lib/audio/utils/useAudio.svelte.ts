@@ -36,6 +36,8 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
   let loaded = $state(false)
   let shouldPlay = $state(false)
   let audioDestroyed = false
+
+  // @Todo: replace with an AbortController
   let audioEpoch = 0
 
   const isCurrentAudio = (currentAudio: T, epoch: number) => {
@@ -97,6 +99,7 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
   })
 
   $effect(() => {
+    audioEpoch += 1
     setSrc(src())
   })
 
@@ -112,6 +115,8 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
 
     const { onload, onprogress, onerror } = props()
 
+    if (!isCurrentAudio(currentAudio, epoch)) return
+
     try {
       if (typeof source === 'string') {
         const audioBuffer = await loader.load(source, {
@@ -119,21 +124,17 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
             onprogress?.(event)
           }
         })
-        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setBuffer(audioBuffer)
       } else if (source instanceof AudioBuffer) {
-        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setBuffer(source)
       } else if (source instanceof HTMLMediaElement) {
-        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setMediaElementSource(source)
       } else if (source instanceof AudioBufferSourceNode) {
-        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setNodeSource(source)
       } else if (source instanceof MediaStream) {
-        if (!isCurrentAudio(currentAudio, epoch)) return
         currentAudio.setMediaStreamSource(source)
       }
+
       loaded = true
 
       onload?.(currentAudio.buffer)
@@ -156,6 +157,7 @@ export const useAudio = <T extends Audio<GainNode> | PositionalAudio>(
 
     if (currentAudio.context.state !== 'running') {
       await currentAudio.context.resume()
+
       if (!isCurrentAudio(currentAudio, epoch)) {
         return
       }
