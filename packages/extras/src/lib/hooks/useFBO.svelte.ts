@@ -2,6 +2,7 @@ import type { RenderTargetOptions } from 'three'
 import { DepthTexture, WebGLRenderTarget } from 'three'
 import { isInstanceOf, useThrelte } from '@threlte/core'
 import { fromStore } from 'svelte/store'
+import { untrack } from 'svelte'
 
 export type UseFBOOptions = RenderTargetOptions & {
   /**
@@ -55,28 +56,30 @@ export function useFBO(options?: UseFBOOptions): WebGLRenderTarget
 export function useFBO(
   optionsArg?: UseFBOOptions | (() => UseFBOOptions | undefined)
 ): WebGLRenderTarget {
+  const { dpr: dprStore, size: sizeStore } = useThrelte()
+  const dpr = fromStore(dprStore)
+  const size = fromStore(sizeStore)
+
   const getOptions: () => UseFBOOptions = isGetter(optionsArg)
     ? () => optionsArg() ?? {}
     : () => optionsArg ?? {}
 
   const { depth, size: userSize, ...targetOptions } = $derived(getOptions())
-  const target = new WebGLRenderTarget(1, 1, targetOptions)
+  const width = $derived(
+    userSize ? Math.max(userSize.width ?? 1, 1) : dpr.current * size.current.width
+  )
+  const height = $derived(
+    userSize ? Math.max(userSize.height ?? 1, 1) : dpr.current * size.current.height
+  )
 
-  const { dpr: dprStore, size: sizeStore } = useThrelte()
-  const dpr = fromStore(dprStore)
-  const canvasSize = fromStore(sizeStore)
+  const target = new WebGLRenderTarget(
+    untrack(() => width),
+    untrack(() => height),
+    targetOptions
+  )
 
   $effect(() => {
-    if (userSize === undefined) {
-      target.setSize(
-        dpr.current * canvasSize.current.width,
-        dpr.current * canvasSize.current.height
-      )
-    } else {
-      const width = Math.max(userSize.width ?? 1, 1)
-      const height = Math.max(userSize.height ?? 1, 1)
-      target.setSize(width, height)
-    }
+    target.setSize(width, height)
   })
 
   $effect(() => {
