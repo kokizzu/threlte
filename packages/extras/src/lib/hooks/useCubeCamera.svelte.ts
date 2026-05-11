@@ -11,7 +11,7 @@ export const useCubeCamera = (
   resolution: () => number | undefined
 ) => {
   const currentNear = $derived(near() ?? 0.1)
-  const currentFar = $derived(far() ?? 2000)
+  const currentFar = $derived(far() ?? 1000)
   const currentResolution = $derived(resolution() ?? 256)
 
   const renderTarget = new WebGLCubeRenderTarget(untrack(() => currentResolution))

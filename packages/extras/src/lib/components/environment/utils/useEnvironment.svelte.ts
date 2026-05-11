@@ -9,11 +9,12 @@ export const useEnvironment = (
   const { invalidate } = useThrelte()
 
   $effect(() => {
+    const currentEnvironment = environment()
+    if (currentEnvironment === undefined) return
+
     const currentScene = scene()
     const { background: lastBackground, environment: lastEnvironment } = currentScene
-
     const currentIsBackground = isBackground()
-    const currentEnvironment = environment() ?? null
 
     currentScene.environment = currentEnvironment
 

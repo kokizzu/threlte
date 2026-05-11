@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte'
 import type { CubeCamera, Scene } from 'three'
 
-export type VirtualEnvironmentProps = {
+export interface VirtualEnvironmentProps {
   children?: Snippet<
     [
       {

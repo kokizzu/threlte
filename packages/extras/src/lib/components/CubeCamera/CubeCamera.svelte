@@ -82,7 +82,7 @@
     {@render children?.({
       camera,
       renderTarget,
-      ref: inner,
+      ref: group,
       restart,
       update
     })}
