@@ -23,9 +23,9 @@
   const { scene } = createSceneContext()
 
   export const { camera, renderTarget } = useCubeCamera(
-    () => resolution,
     () => near,
-    () => far
+    () => far,
+    () => resolution
   )
 
   useEnvironment(

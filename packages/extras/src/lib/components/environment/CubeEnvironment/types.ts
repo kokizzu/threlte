@@ -1,6 +1,7 @@
+import type { CubeTexture } from 'three'
 import type { CommonEnvironmentProps } from '../types.js'
 
-export type CubeEnvironmentProps = CommonEnvironmentProps & {
+export interface CubeEnvironmentProps extends CommonEnvironmentProps<CubeTexture> {
   /**
    * The files to load or the textures to use
    */

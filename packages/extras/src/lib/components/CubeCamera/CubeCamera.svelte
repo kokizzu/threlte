@@ -19,9 +19,9 @@
   }: CubeCameraProps = $props()
 
   export const { camera, renderTarget } = useCubeCamera(
-    () => resolution,
     () => near,
-    () => far
+    () => far,
+    () => resolution
   )
 
   const { renderer, scene } = useThrelte()

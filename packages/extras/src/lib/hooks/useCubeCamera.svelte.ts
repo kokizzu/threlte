@@ -21,13 +21,13 @@ import { untrack } from 'svelte'
  * @return an object with a property `current` that is a getter to the derived cubeCamera
  */
 export const useCubeCamera = (
-  resolution: () => number | undefined,
   near: () => number | undefined,
-  far: () => number | undefined
+  far: () => number | undefined,
+  resolution: () => number | undefined
 ) => {
-  const currentResolution = $derived(resolution() ?? 256)
   const currentNear = $derived(near() ?? 0.1)
   const currentFar = $derived(far() ?? 2000)
+  const currentResolution = $derived(resolution() ?? 256)
 
   const renderTarget = new WebGLCubeRenderTarget(untrack(() => currentResolution))
 

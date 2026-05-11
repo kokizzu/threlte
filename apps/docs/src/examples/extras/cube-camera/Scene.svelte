@@ -8,8 +8,6 @@
     puresky: 'mpumalanga_veld_puresky_1k.hdr'
   } as const
 
-  const hdrPath = '/textures/equirectangular/hdr/'
-
   const isHdrKey = (u: PropertyKey): u is keyof typeof hdrs => {
     return u in hdrs
   }
@@ -19,8 +17,8 @@
   import type { Group } from 'three'
   import { CubeCamera, Environment, Grid, OrbitControls } from '@threlte/extras'
   import { EquirectangularReflectionMapping } from 'three'
-  import { T, useLoader, useTask } from '@threlte/core'
   import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+  import { T, useLoader, useTask } from '@threlte/core'
 
   interface Props {
     frames?: number
@@ -48,7 +46,8 @@
   const radius = 3
 
   let time = 0
-  const groups: Group[] = []
+  const groups = $state<Group[]>([])
+
   useTask((delta) => {
     time += delta
     let i = 0
@@ -57,6 +56,8 @@
       i += 1
     }
   })
+
+  const hdrPath = '/textures/equirectangular/hdr/'
 
   const loader = useLoader(RGBELoader, {
     extend(loader) {
@@ -94,28 +95,25 @@
   cellColor="#fff"
 />
 
-{#each colors as color, index}
-  {@const r = increment * index}
-  <T.Mesh
-    position.x={radius * Math.cos(r)}
-    position.y={index}
-    position.z={radius * Math.sin(r)}
-  >
-    <T.MeshStandardMaterial {color} />
-    <T.SphereGeometry />
-  </T.Mesh>
-{/each}
-
 {#await backgrounds then backgroundMap}
   {@const background = isHdrKey(hdr) ? backgroundMap[hdr] : hdr}
-  {#each colors, index}
-    {@const r = Math.PI + increment * index}
+  {#each colors as color, index}
+    {@const x = increment * index}
+    {@const y = Math.PI + x}
+
+    <T.Mesh
+      position.x={radius * Math.cos(x)}
+      position.y={index}
+      position.z={radius * Math.sin(x)}
+    >
+      <T.MeshStandardMaterial {color} />
+      <T.SphereGeometry />
+    </T.Mesh>
+
     <T.Group
-      position.x={radius * Math.cos(r)}
-      position.z={radius * Math.sin(r)}
-      oncreate={(ref) => {
-        groups.push(ref)
-      }}
+      bind:ref={groups[index]}
+      position.x={radius * Math.cos(y)}
+      position.z={radius * Math.sin(y)}
     >
       <CubeCamera
         {background}

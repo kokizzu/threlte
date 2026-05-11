@@ -1,9 +1,9 @@
-import type { Scene } from 'three'
+import type { Scene, Texture } from 'three'
 
 /**
  * Props that are common to both EquirectangularEnvironmentProps and CubeEnvironmentProps
  */
-export type CommonEnvironmentProps = {
+export interface CommonEnvironmentProps<T extends Texture> {
   /**
    * Whether to set the `scene`'s background to the loaded environment
    * @default false
@@ -20,5 +20,5 @@ export type CommonEnvironmentProps = {
    * A bindable of the loaded texture
    * @default null
    */
-  texture?: Scene['environment']
+  texture?: T | null | undefined
 }
