@@ -1,5 +1,11 @@
 # @threlte/extras
 
+## 9.17.1
+
+### Patch Changes
+
+- cf6480d: Simplify environment-related components internals
+
 ## 9.17.0
 
 ### Minor Changes
