@@ -7,7 +7,6 @@
     MeshDepthMaterial,
     MeshDistanceMaterial,
     RGBADepthPacking,
-    Vector2,
     Vector3,
     type Material,
     type WebGLProgramParametersWithUniforms
@@ -16,18 +15,21 @@
   type WobbleUniforms = {
     time: { value: number }
     factor: { value: number }
-    randomness: { value: number }
+    frequency: { value: number }
+    noise: { value: number }
+    pulse: { value: number }
+    drift: { value: number }
     bendiness: { value: number }
-    anchor: { value: Vector3 }
+    axis: { value: Vector3 }
+    anchor: { value: number }
     hasAnchor: { value: boolean }
-    forceDirection: { value: Vector2 }
+    forceDirection: { value: Vector3 }
     hasForceDirection: { value: boolean }
   }
 
-  // Ashima 3D simplex noise. Inlined so users don't need to wire up a noise
-  // chunk themselves. Bounded roughly to [-1, 1], smooth, and aperiodic in
-  // any direction — perfect for nudging the wobble out of lockstep.
-  const SIMPLEX_NOISE_GLSL = `
+  // Ashima 3D simplex noise + fBM + a Rodrigues rotation helper. All inlined
+  // so users don't need to wire shader code themselves.
+  const WOBBLE_HELPERS_GLSL = `
     vec3 wobbleMod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 wobbleMod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 wobblePermute(vec4 x) { return wobbleMod289(((x * 34.0) + 10.0) * x); }
@@ -80,10 +82,8 @@
     }
 
     // Fractal Brownian motion: 4 octaves of simplex noise at doubling
-    // frequencies and halving amplitudes. Produces a slow base oscillation
-    // with progressively finer flutter on top — the standard recipe for
-    // organic, wind-like motion (procedural terrain, GPU Gems trees, etc.).
-    // Normalized so the result stays roughly in [-1, 1].
+    // frequencies and halving amplitudes. The standard recipe for organic,
+    // wind-like motion. Normalized so the result stays roughly in [-1, 1].
     float wobbleFbm(vec3 v) {
       float sum = 0.0;
       float amp = 1.0;
@@ -95,9 +95,16 @@
       }
       return sum / 1.875;
     }
+
+    // Rodrigues' rotation formula: rotate v around unit-vector k by angle.
+    vec3 wobbleRotate(vec3 v, vec3 k, float angle) {
+      float c = cos(angle);
+      float s = sin(angle);
+      return v * c + cross(k, v) * s + k * dot(k, v) * (1.0 - c);
+    }
   `
 
-  const WOBBLE_CACHE_KEY = '__wobble_v1'
+  const WOBBLE_CACHE_KEY = '__wobble_v2'
 
   const patchWobbleShader = (
     shader: WebGLProgramParametersWithUniforms,
@@ -106,8 +113,12 @@
   ) => {
     shader.uniforms.time = uniforms.time
     shader.uniforms.factor = uniforms.factor
-    shader.uniforms.randomness = uniforms.randomness
+    shader.uniforms.frequency = uniforms.frequency
+    shader.uniforms.noise = uniforms.noise
+    shader.uniforms.pulse = uniforms.pulse
+    shader.uniforms.drift = uniforms.drift
     shader.uniforms.bendiness = uniforms.bendiness
+    shader.uniforms.axis = uniforms.axis
     shader.uniforms.anchor = uniforms.anchor
     shader.uniforms.hasAnchor = uniforms.hasAnchor
     shader.uniforms.forceDirection = uniforms.forceDirection
@@ -116,37 +127,54 @@
     shader.vertexShader = `
       uniform float time;
       uniform float factor;
-      uniform float randomness;
+      uniform float frequency;
+      uniform float noise;
+      uniform float pulse;
+      uniform float drift;
       uniform float bendiness;
-      uniform vec3 anchor;
+      uniform vec3 axis;
+      uniform float anchor;
       uniform bool hasAnchor;
-      uniform vec2 forceDirection;
+      uniform vec3 forceDirection;
       uniform bool hasForceDirection;
-      ${SIMPLEX_NOISE_GLSL}
+      ${WOBBLE_HELPERS_GLSL}
       ${shader.vertexShader}
     `
 
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
-      `float weight = hasAnchor ? abs(position.y - anchor.y) : 1.0;
-       // For InstancedMesh / BatchedMesh, fold each instance's world XZ
-       // into the noise sample so different instances wobble out of phase.
-       // The matrices are already defined by three's batching/instancing
-       // chunks earlier in main(); the #ifdef guards keep us safe on
-       // non-instanced meshes where these symbols don't exist.
+      `// Build an orthonormal basis aligned to the wobble axis. The two
+       // perpendicular axes (across1/across2) span the "across" plane that
+       // bend, noise, and force direction all live in.
+       vec3 wobbleAxis = normalize(axis);
+       vec3 wobbleRef = abs(wobbleAxis.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+       vec3 across1 = normalize(cross(wobbleAxis, wobbleRef));
+       vec3 across2 = cross(wobbleAxis, across1);
+
+       float along = dot(position, wobbleAxis);
+       vec2 acrossPos = vec2(dot(position, across1), dot(position, across2));
+
+       // For InstancedMesh / BatchedMesh, fold each instance's "across"
+       // translation into the noise sample so instances wobble out of
+       // phase. #ifdef guards keep us safe on non-instanced meshes.
        vec2 instanceOffset = vec2(0.0);
        #ifdef USE_INSTANCING
-         instanceOffset = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
+         vec3 instTrans = vec3(instanceMatrix[3].x, instanceMatrix[3].y, instanceMatrix[3].z);
+         instanceOffset = vec2(dot(instTrans, across1), dot(instTrans, across2));
        #endif
        #ifdef USE_BATCHING
-         instanceOffset = vec2(batchingMatrix[3].x, batchingMatrix[3].z);
+         vec3 batchTrans = vec3(batchingMatrix[3].x, batchingMatrix[3].y, batchingMatrix[3].z);
+         instanceOffset = vec2(dot(batchTrans, across1), dot(batchTrans, across2));
        #endif
 
-       float sineWobble = sin(1.0 + time + position.y + instanceOffset.x);
-       // Domain warping: sample fBM once to perturb the input of a second fBM
-       // call. Breaks up the grid-aligned feel of straight noise and gives
-       // fluid, swirling motion (iquilezles's classic trick).
-       vec3 noiseInput = vec3((position.xz + instanceOffset) * 0.6, time * 0.5);
+       float weight = hasAnchor ? abs(along - anchor) : 1.0;
+       vec2 spatialSample = (acrossPos + instanceOffset) * frequency;
+
+       float sineWobble = sin(1.0 + time + along * frequency + instanceOffset.x);
+       // Domain warping: sample fBM once to perturb the input of a second
+       // fBM call. Breaks up the grid-aligned feel of straight noise and
+       // gives fluid, swirling motion (iquilezles's classic trick).
+       vec3 noiseInput = vec3(spatialSample * 0.6, time * 0.5);
        float warpScale = 0.5;
        vec3 warpedInput = noiseInput + warpScale * vec3(
          wobbleFbm(noiseInput),
@@ -154,66 +182,45 @@
          wobbleFbm(noiseInput + vec3(0.0, 2.1, 4.6))
        );
        float noiseWobble = wobbleFbm(warpedInput);
-       float wobble = mix(sineWobble, noiseWobble, randomness);
-       // Slow time-only fBM modulates magnitude — produces wind-like gusts
-       // and lulls. Instance offset feeds in so neighbouring blades catch
-       // gusts at slightly different times.
-       float gustNoise = wobbleFbm(vec3(time * 0.3 + instanceOffset.x * 0.3, 0.0, instanceOffset.y * 0.3)) * 0.5 + 0.5;
-       float gust = mix(1.0, 0.1 + 1.4 * gustNoise, randomness);
+       float wobble = mix(sineWobble, noiseWobble, noise);
+       // Slow time-only fBM modulates magnitude when "pulse > 0". Instance
+       // offset feeds in so neighbours pulse out of sync.
+       float pulseNoise = wobbleFbm(vec3(time * 0.3 + instanceOffset.x * 0.3, 0.0, instanceOffset.y * 0.3)) * 0.5 + 0.5;
+       float gust = mix(1.0, 0.1 + 1.4 * pulseNoise, pulse);
        float theta = wobble * gust / 2.0 * factor * weight;
 
-       // Y-axis twist (existing motion).
-       float c = cos(theta);
-       float s = sin(theta);
-       mat3 twistMatrix = mat3(c, 0, s, 0, 1, 0, -s, 0, c);
-       vec3 twisted = vec3(position) * twistMatrix;
-       ${withNormals ? 'vec3 twistedNormal = vNormal * twistMatrix;' : ''}
+       // Twist around the wobble axis.
+       vec3 twisted = wobbleRotate(position, wobbleAxis, theta);
+       ${withNormals ? 'vec3 twistedNormal = wobbleRotate(vNormal, wobbleAxis, theta);' : ''}
 
-       // Directional bend. Pivots about the anchor (or origin) so vertices
-       // farther from the pivot displace more — like a stem hinged at the
-       // soil. Force heading is either user-supplied or drifts via fBM so
-       // unset = wind-like behavior. Bend uses its own slow oscillation —
-       // macroscopic sway is much slower than the per-vertex twist flutter.
-       vec3 anchorPoint = hasAnchor ? anchor : vec3(0.0);
+       // Bend: tilt in the across-plane toward forceDirection.
+       float pivotAlong = hasAnchor ? anchor : 0.0;
+       vec3 anchorPoint = wobbleAxis * pivotAlong;
        vec3 forceDir;
        if (hasForceDirection) {
-         vec2 fd = forceDirection;
+         vec3 fd = forceDirection - dot(forceDirection, wobbleAxis) * wobbleAxis;
          float fdLen = length(fd);
-         forceDir = fdLen > 0.0001 ? vec3(fd.x / fdLen, 0.0, fd.y / fdLen) : vec3(1.0, 0.0, 0.0);
+         forceDir = fdLen > 0.0001 ? fd / fdLen : across1;
        } else {
-         // Default to +X with slow drift scaled by randomness, so randomness=0
-         // gives a steady direction (no rotating-around feel) and randomness=1
-         // sweeps the full circle over time.
-         float windAngle = wobbleFbm(vec3(time * 0.08, 0.0, 0.0)) * 3.14159 * randomness;
-         forceDir = vec3(cos(windAngle), 0.0, sin(windAngle));
+         // Slow drift scaled by "drift". At 0 the direction holds steady,
+         // at 1 it sweeps the full circle over time.
+         float driftAngle = wobbleFbm(vec3(time * 0.08, 0.0, 0.0)) * 3.14159 * drift;
+         forceDir = across1 * cos(driftAngle) + across2 * sin(driftAngle);
        }
-       vec3 bendAxis = cross(vec3(0.0, 1.0, 0.0), forceDir);
-       // Bend is a slow macroscopic sway. The angle scales with distance
-       // from the anchor along Y, so the mesh bends in a beam-like curve
-       // (tip flexes more than the base) rather than rotating as a rigid
-       // body. At randomness=0 it's a uniform time-only oscillation; higher
-       // randomness mixes in slow per-vertex noise for organic micro-gusts.
+       vec3 bendAxisVec = cross(wobbleAxis, forceDir);
+       // Bend uses its own slow oscillation — macroscopic sway is much
+       // slower than the per-vertex twist flutter.
        float bendUniform = sin(time * 0.25 + instanceOffset.x * 0.2);
-       float bendPerVertex = wobbleFbm(vec3((position.xz + instanceOffset) * 0.3, time * 0.15));
-       float bendWobble = mix(bendUniform, bendPerVertex, randomness);
+       float bendPerVertex = wobbleFbm(vec3(spatialSample * 0.3, time * 0.15));
+       float bendWobble = mix(bendUniform, bendPerVertex, noise);
        float bendTheta = bendWobble * gust * factor * weight / 2.0;
-       float cb = cos(bendTheta);
-       float sb = sin(bendTheta);
        vec3 fromAnchor = position - anchorPoint;
-       // Rodrigues rotation of fromAnchor about bendAxis by bendTheta.
-       vec3 bentLocal =
-         fromAnchor * cb +
-         cross(bendAxis, fromAnchor) * sb +
-         bendAxis * dot(bendAxis, fromAnchor) * (1.0 - cb);
-       vec3 bent = bentLocal + anchorPoint;
+       vec3 bent = wobbleRotate(fromAnchor, bendAxisVec, bendTheta) + anchorPoint;
 
        vec3 transformed = mix(twisted, bent, bendiness);
        ${
          withNormals
-           ? `vec3 bentNormal =
-              vNormal * cb +
-              cross(bendAxis, vNormal) * sb +
-              bendAxis * dot(bendAxis, vNormal) * (1.0 - cb);
+           ? `vec3 bentNormal = wobbleRotate(vNormal, bendAxisVec, bendTheta);
             vNormal = mix(twistedNormal, bentNormal, bendiness);`
            : ''
        }`
@@ -265,16 +272,23 @@
 </script>
 
 <script lang="ts">
-  import { isInstanceOf, useParent, useTask } from '@threlte/core'
+  import { isInstanceOf, useParent, useTask, useThrelte } from '@threlte/core'
   import type { WobbleProps } from './types.js'
+
+  const { invalidate } = useThrelte()
 
   let {
     speed = 1,
     factor = 1,
-    randomness = 0,
+    frequency = 1,
+    noise = 0,
+    pulse = 0,
+    drift = 0,
     bendiness = 0,
+    axis = [0, 1, 0],
     anchor,
     forceDirection,
+    time,
     material: materialProp
   }: WobbleProps = $props()
 
@@ -283,41 +297,80 @@
   const uniforms: WobbleUniforms = {
     time: { value: 0 },
     factor: { value: 1 },
-    randomness: { value: 0 },
+    frequency: { value: 1 },
+    noise: { value: 0 },
+    pulse: { value: 0 },
+    drift: { value: 0 },
     bendiness: { value: 0 },
-    anchor: { value: new Vector3() },
+    axis: { value: new Vector3(0, 1, 0) },
+    anchor: { value: 0 },
     hasAnchor: { value: false },
-    forceDirection: { value: new Vector2() },
+    forceDirection: { value: new Vector3() },
     hasForceDirection: { value: false }
   }
 
   $effect.pre(() => {
     uniforms.factor.value = factor
+    invalidate()
   })
 
   $effect.pre(() => {
-    uniforms.randomness.value = randomness
+    uniforms.frequency.value = frequency
+    invalidate()
+  })
+
+  $effect.pre(() => {
+    uniforms.noise.value = noise
+    invalidate()
+  })
+
+  $effect.pre(() => {
+    uniforms.pulse.value = pulse
+    invalidate()
+  })
+
+  $effect.pre(() => {
+    uniforms.drift.value = drift
+    invalidate()
   })
 
   $effect.pre(() => {
     uniforms.bendiness.value = bendiness
+    invalidate()
+  })
+
+  $effect.pre(() => {
+    uniforms.axis.value.set(axis[0], axis[1], axis[2])
+    invalidate()
   })
 
   $effect.pre(() => {
     if (anchor === undefined) {
       uniforms.hasAnchor.value = false
     } else {
-      uniforms.anchor.value.set(anchor[0], anchor[1], anchor[2])
+      uniforms.anchor.value = anchor
       uniforms.hasAnchor.value = true
     }
+    invalidate()
   })
 
   $effect.pre(() => {
     if (forceDirection === undefined) {
       uniforms.hasForceDirection.value = false
     } else {
-      uniforms.forceDirection.value.set(forceDirection[0], forceDirection[1])
+      uniforms.forceDirection.value.set(forceDirection[0], forceDirection[1], forceDirection[2])
       uniforms.hasForceDirection.value = true
+    }
+    invalidate()
+  })
+
+  // Drive the clock externally when `time` is supplied; otherwise the task
+  // below advances it. We invalidate manually because the task that would
+  // normally request a frame is paused when time is external.
+  $effect.pre(() => {
+    if (time !== undefined) {
+      uniforms.time.value = time
+      invalidate()
     }
   })
 
@@ -345,6 +398,6 @@
     (delta) => {
       uniforms.time.value += delta * speed
     },
-    { running: () => speed !== 0 }
+    { running: () => time === undefined && speed !== 0 }
   )
 </script>

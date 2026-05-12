@@ -36,29 +36,32 @@
     subject = 'plant',
     speed = 1,
     factor = 0.5,
-    randomness = 0,
+    frequency = 1,
+    noise = 0,
+    pulse = 0,
+    drift = 0,
     bendiness = 0,
+    axis = [0, 1, 0],
     anchor,
-    plantBaseY = $bindable()
+    forceDirection,
+    time
   }: {
     subject?: 'plant' | 'orb' | 'flowers'
     speed?: number
     factor?: number
-    randomness?: number
+    frequency?: number
+    noise?: number
+    pulse?: number
+    drift?: number
     bendiness?: number
-    anchor?: [number, number, number]
-    plantBaseY?: number
+    axis?: [number, number, number]
+    anchor?: number
+    forceDirection?: [number, number, number]
+    time?: number
   } = $props()
 
   const plantGltf = useGltf<Plant>('/models/rhyzome_plant-baked.glb')
   const flowerGltf = useGltf<Flower>('/models/Flower.glb')
-
-  $effect(() => {
-    if (!$plantGltf) return
-    const plantGeometry = $plantGltf.nodes.plant_lambert2_0.geometry
-    plantGeometry.computeBoundingBox()
-    plantBaseY = plantGeometry.boundingBox?.min.y ?? 0
-  })
 
   // Scattered flower placements.
   const flowerPlacements = Array.from({ length: 20 }, (_, i) => {
@@ -147,9 +150,15 @@
     <Wobble
       {speed}
       {factor}
-      {randomness}
+      {frequency}
+      {noise}
+      {pulse}
+      {drift}
       {bendiness}
+      {axis}
       {anchor}
+      {forceDirection}
+      {time}
     />
   </T.Mesh>
 {:else if subject === 'orb'}
@@ -166,9 +175,15 @@
     <Wobble
       {speed}
       {factor}
-      {randomness}
+      {frequency}
+      {noise}
+      {pulse}
+      {drift}
       {bendiness}
+      {axis}
       {anchor}
+      {forceDirection}
+      {time}
     />
     <Wireframe />
   </T.Mesh>
@@ -183,9 +198,15 @@
     <Wobble
       {speed}
       {factor}
-      {randomness}
+      {frequency}
+      {noise}
+      {pulse}
+      {drift}
       {bendiness}
+      {axis}
       {anchor}
+      {forceDirection}
+      {time}
     />
     {#each flowerPlacements as f}
       <Instance
@@ -207,9 +228,15 @@
     <Wobble
       {speed}
       {factor}
-      {randomness}
+      {frequency}
+      {noise}
+      {pulse}
+      {drift}
       {bendiness}
+      {axis}
       {anchor}
+      {forceDirection}
+      {time}
     />
     {#each flowerPlacements as f}
       <Instance
