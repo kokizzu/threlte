@@ -1,6 +1,6 @@
 import type { Material, Vector3Tuple } from 'three'
 
-export type WobbleProps = {
+export interface WobbleProps {
   /**
    * How fast the internal animation clock advances. Ignored when `time` is
    * provided as a prop.
