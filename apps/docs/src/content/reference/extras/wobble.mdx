@@ -75,6 +75,12 @@ componentSignature:
           name: 'material',
           type: 'Material | Material[]',
           description: 'The material to wobble. When omitted, the parent mesh material (read once at mount) is patched. Pass a bound material ref to react to runtime material swaps.'
+        },
+        {
+          name: 'shadow',
+          type: 'boolean',
+          default: 'true',
+          description: 'Whether the shadow silhouette should follow the wobble via attached custom depth/distance materials. Set to false to skip — useful if the mesh does not cast shadows, or you manage those materials yourself.'
         }
       ]
   }

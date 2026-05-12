@@ -7,12 +7,13 @@
     MeshDepthMaterial,
     MeshDistanceMaterial,
     RGBADepthPacking,
+    Uniform,
     Vector3,
     type Material,
     type WebGLProgramParametersWithUniforms
   } from 'three'
 
-  type WobbleUniforms = {
+  interface WobbleUniforms {
     time: { value: number }
     factor: { value: number }
     frequency: { value: number }
@@ -289,62 +290,63 @@
     anchor,
     forceDirection,
     time,
-    material: materialProp
+    material: materialProp,
+    shadow = true
   }: WobbleProps = $props()
 
   const parent = useParent()
 
   const uniforms: WobbleUniforms = {
-    time: { value: 0 },
-    factor: { value: 1 },
-    frequency: { value: 1 },
-    noise: { value: 0 },
-    pulse: { value: 0 },
-    drift: { value: 0 },
-    bendiness: { value: 0 },
-    axis: { value: new Vector3(0, 1, 0) },
-    anchor: { value: 0 },
-    hasAnchor: { value: false },
-    forceDirection: { value: new Vector3() },
-    hasForceDirection: { value: false }
+    time: new Uniform(0),
+    factor: new Uniform(1),
+    frequency: new Uniform(1),
+    noise: new Uniform(0),
+    pulse: new Uniform(0),
+    drift: new Uniform(0),
+    bendiness: new Uniform(0),
+    axis: new Uniform(new Vector3(0, 1, 0)),
+    anchor: new Uniform(0),
+    hasAnchor: new Uniform(false),
+    forceDirection: new Uniform(new Vector3()),
+    hasForceDirection: new Uniform(false)
   }
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.factor.value = factor
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.frequency.value = frequency
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.noise.value = noise
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.pulse.value = pulse
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.drift.value = drift
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.bendiness.value = bendiness
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     uniforms.axis.value.set(axis[0], axis[1], axis[2])
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     if (anchor === undefined) {
       uniforms.hasAnchor.value = false
     } else {
@@ -354,7 +356,7 @@
     invalidate()
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     if (forceDirection === undefined) {
       uniforms.hasForceDirection.value = false
     } else {
@@ -364,17 +366,15 @@
     invalidate()
   })
 
-  // Drive the clock externally when `time` is supplied; otherwise the task
-  // below advances it. We invalidate manually because the task that would
-  // normally request a frame is paused when time is external.
-  $effect.pre(() => {
+  // Drive the clock externally when `time` is supplied
+  $effect(() => {
     if (time !== undefined) {
       uniforms.time.value = time
       invalidate()
     }
   })
 
-  $effect.pre(() => {
+  $effect(() => {
     const parentMesh = $parent
     if (!isInstanceOf(parentMesh, 'Mesh')) {
       console.error('<Wobble> must be placed inside a <T.Mesh>.')
@@ -386,11 +386,11 @@
 
     const materials = Array.isArray(target) ? target : [target]
     const restoreMaterials = materials.map((m) => applyWobble(m, uniforms))
-    const restoreShadow = applyShadowWobble(parentMesh as Mesh, uniforms)
+    const restoreShadow = shadow ? applyShadowWobble(parentMesh as Mesh, uniforms) : undefined
 
     return () => {
       restoreMaterials.forEach((fn) => fn())
-      restoreShadow()
+      restoreShadow?.()
     }
   })
 

@@ -96,4 +96,15 @@ export type WobbleProps = {
    * runtime material swaps.
    */
   material?: Material | Material[]
+
+  /**
+   * Whether the shadow silhouette should follow the wobble. When `true`
+   * (the default) `<Wobble>` attaches matching `customDepthMaterial` and
+   * `customDistanceMaterial` to the parent mesh so shadows track the
+   * deformation. Set to `false` to skip the attach — useful if the mesh
+   * doesn't cast shadows, or you're already managing the depth/distance
+   * materials yourself.
+   * @default true
+   */
+  shadow?: boolean
 }

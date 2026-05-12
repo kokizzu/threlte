@@ -23,8 +23,6 @@
     time: number
   }
 
-  // Only subject-specific values vary; everything else inherits the defaults
-  // below for a quick switch between shapes.
   const defaults: Omit<
     Preset,
     'speed' | 'factor' | 'noise' | 'pulse' | 'drift' | 'bendiness' | 'anchorEnabled' | 'anchor'
@@ -36,9 +34,6 @@
     timeEnabled: false,
     time: 0
   }
-
-  // Presets mirror the old single-knob `randomness` feel by setting
-  // noise / pulse / drift to the same value.
   const presets: Record<Subject, Preset> = {
     plant: {
       ...defaults,
