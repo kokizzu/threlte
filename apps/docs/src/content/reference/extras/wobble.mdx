@@ -1,0 +1,121 @@
+---
+category: '@threlte/extras'
+group: 'Visual Effects'
+title: '<Wobble>'
+sourcePath: 'packages/extras/src/lib/components/Wobble/Wobble.svelte'
+type: 'component'
+componentSignature:
+  {
+    props:
+      [
+        {
+          name: 'speed',
+          type: 'number',
+          default: '1',
+          description: 'How fast the wobble animation advances.'
+        },
+        {
+          name: 'factor',
+          type: 'number',
+          default: '1',
+          description: 'How strongly vertices are displaced. Larger values produce a more pronounced wobble.'
+        },
+        {
+          name: 'randomness',
+          type: 'number',
+          default: '0',
+          description: 'Blends from a clean sine wobble (0) to a noise-driven wobble (1). At higher values different parts of the mesh fall out of phase AND the overall magnitude is modulated by a slow time-only noise — producing wind-like gusts and lulls.'
+        },
+        {
+          name: 'anchor',
+          type: 'Vector3Tuple',
+          description: 'A point in local geometry space that stays still while the rest of the mesh wobbles. Wobble amplitude scales with each vertex distance along Y from this point. Useful for keeping the base of an object planted. When omitted, every vertex wobbles equally.'
+        },
+        {
+          name: 'material',
+          type: 'Material | Material[]',
+          description: 'The material to wobble. When omitted, the parent mesh material (read once at mount) is patched. Pass a bound material ref to react to runtime material swaps.'
+        }
+      ]
+  }
+---
+
+`<Wobble>` adds a time-varying vertex displacement to whatever material is already on its parent
+mesh. Because it patches the material rather than replacing it, you can wobble any
+`MeshStandardMaterial`, `MeshPhysicalMaterial`, `MeshLambertMaterial`, `MeshToonMaterial`, and so
+on — pick the look you want, then drop `<Wobble>` in to make it move.
+
+<Example path="extras/wobble" />
+
+<small>Plant: [Rhyzome Plant](https://sketchfab.com/3d-models/rhyzome-plant-7191a1b935ac452987866573713e4da5) by Blizzy</small>
+
+## Examples
+
+### Basic Example
+
+```svelte title="WobblingTorus.svelte"
+<script lang="ts">
+  import { T } from '@threlte/core'
+  import { Wobble } from '@threlte/extras'
+</script>
+
+<T.Mesh>
+  <T.TorusGeometry />
+  <T.MeshStandardMaterial color="#ff6b6b" />
+  <Wobble
+    speed={2}
+    factor={2}
+  />
+</T.Mesh>
+```
+
+The wobble is computed per-vertex, so meshes need enough geometric detail for the deformation
+to look smooth. Increase the segment counts on the geometry if the surface looks faceted.
+
+Because the wobble is driven by `position.y`, the effect is most visible on shapes with vertical
+extent or curvature — torus, torus-knot, or tall geometries show it clearly; a flat box or short
+sphere will barely move.
+
+Setting `speed={0}` pauses the animation without unmounting the component.
+
+### Anchoring the base
+
+Pass an `anchor` to hold a point in local geometry space still. Wobble amplitude grows with each
+vertex's Y distance from that point — vertices at the anchor's Y don't move, ones farther away
+move more. This is what you want for a plant whose base shouldn't slide around in its pot:
+
+```svelte title="AnchoredPlant.svelte"
+<T.Mesh castShadow>
+  <T is={plantGeometry} />
+  <T.MeshStandardMaterial color="#4a7a3a" />
+  <Wobble
+    speed={1}
+    factor={0.5}
+    anchor={[0, plantBaseY, 0]}
+  />
+</T.Mesh>
+```
+
+Shadows wobble alongside the visible mesh — `<Wobble>` attaches matching `customDepthMaterial`
+and `customDistanceMaterial` to the parent so the shadow silhouette tracks the deformation.
+
+### Reacting to material swaps
+
+By default `<Wobble>` patches the parent mesh's material once when it mounts. If you swap
+materials at runtime, pass it in via `material` so the patch follows:
+
+```svelte
+<script lang="ts">
+  let { material } = $props()
+</script>
+
+<T.Mesh>
+  <T.SphereGeometry />
+  <T is={material} />
+  <Wobble
+    {material}
+    speed={2}
+    factor={1}
+  />
+</T.Mesh>
+```
