@@ -5,7 +5,7 @@
 
   type Subject = 'plant' | 'orb' | 'flowers'
 
-  type Preset = {
+  interface Preset {
     speed: number
     factor: number
     randomness: number
@@ -14,9 +14,6 @@
     anchor: [number, number, number]
   }
 
-  // Each subject's anchor is in its own local geometry space — the plant
-  // base sits ~0.76 units up the model, the flower model already has its
-  // base at 0, and the orb doesn't anchor anything.
   const presets: Record<Subject, Preset> = {
     plant: {
       speed: 2.5,
@@ -45,24 +42,10 @@
   }
 
   let subject = $state<Subject>('plant')
-  let speed = $state(presets.plant.speed)
-  let factor = $state(presets.plant.factor)
-  let randomness = $state(presets.plant.randomness)
-  let bendiness = $state(presets.plant.bendiness)
-  let anchorEnabled = $state(presets.plant.anchorEnabled)
-  let anchor = $state<[number, number, number]>(presets.plant.anchor)
+  let options = $state(presets.plant)
 
-  // Apply the subject's preset whenever it changes. This deliberately
-  // clobbers slider state — switching subjects is meant to reset the
-  // tuning to something sensible for that shape.
   $effect(() => {
-    const preset = presets[subject]
-    speed = preset.speed
-    factor = preset.factor
-    randomness = preset.randomness
-    bendiness = preset.bendiness
-    anchorEnabled = preset.anchorEnabled
-    anchor = preset.anchor
+    options = presets[subject]
   })
 </script>
 
@@ -70,11 +53,8 @@
   <Canvas>
     <Scene
       {subject}
-      {speed}
-      {factor}
-      {randomness}
-      {bendiness}
-      anchor={anchorEnabled ? anchor : undefined}
+      {...options}
+      anchor={options.anchorEnabled ? options.anchor : undefined}
     />
   </Canvas>
 </div>
@@ -89,28 +69,28 @@
     options={{ Plant: 'plant', Orb: 'orb', Flowers: 'flowers' }}
   />
   <Slider
-    bind:value={speed}
+    bind:value={options.speed}
     label="speed"
     min={0}
     max={5}
     step={0.01}
   />
   <Slider
-    bind:value={factor}
+    bind:value={options.factor}
     label="factor"
     min={0}
     max={3}
     step={0.01}
   />
   <Slider
-    bind:value={randomness}
+    bind:value={options.randomness}
     label="randomness"
     min={0}
     max={1}
     step={0.01}
   />
   <Slider
-    bind:value={bendiness}
+    bind:value={options.bendiness}
     label="bendiness"
     min={0}
     max={1}
@@ -118,16 +98,16 @@
   />
 
   <Checkbox
-    bind:value={anchorEnabled}
+    bind:value={options.anchorEnabled}
     label="anchor"
   />
   <Point
-    bind:value={anchor}
+    bind:value={options.anchor}
     label="anchor xyz"
     min={-2}
     max={4}
     step={0.01}
-    disabled={!anchorEnabled}
+    disabled={!options.anchorEnabled}
   />
 </Pane>
 

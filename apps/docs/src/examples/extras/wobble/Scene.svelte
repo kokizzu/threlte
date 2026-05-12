@@ -13,7 +13,7 @@
     Wireframe
   } from '@threlte/extras'
 
-  type Plant = {
+  interface Plant {
     nodes: {
       concrete_pot_lambert3_0: Mesh
       plant_lambert2_0: Mesh
@@ -24,7 +24,7 @@
     }
   }
 
-  type FlowerNodes = {
+  interface Flower {
     nodes: {
       Blossom: Mesh
       Stem: Mesh
@@ -50,29 +50,14 @@
     plantBaseY?: number
   } = $props()
 
-  // Model is pre-baked: parent transforms applied into geometry, centered
-  // on XZ, base at y=0, scaled to 3 units tall. See ./bake.mjs.
-  const gltf = useGltf<Plant>('/models/rhyzome_plant-baked.glb')
-  const flowerGltf = useGltf<FlowerNodes>('/models/Flower.glb')
+  const plantGltf = useGltf<Plant>('/models/rhyzome_plant-baked.glb')
+  const flowerGltf = useGltf<Flower>('/models/Flower.glb')
 
   $effect(() => {
-    if (!$gltf) return
-    const plantGeometry = $gltf.nodes.plant_lambert2_0.geometry
+    if (!$plantGltf) return
+    const plantGeometry = $plantGltf.nodes.plant_lambert2_0.geometry
     plantGeometry.computeBoundingBox()
-    plantBaseY = plantGeometry.boundingBox!.min.y
-  })
-
-  // Flower.glb ships Z-up, position-only geometry. Rotate to Y-up and add
-  // synthetic normals once on load so the standard material can light it.
-  $effect(() => {
-    if (!$flowerGltf) return
-    for (const node of [$flowerGltf.nodes.Stem, $flowerGltf.nodes.Blossom]) {
-      if (!node.userData.normalized) {
-        node.geometry.rotateX(Math.PI / 2)
-        node.geometry.computeVertexNormals()
-        node.userData.normalized = true
-      }
-    }
+    plantBaseY = plantGeometry.boundingBox?.min.y ?? 0
   })
 
   // Scattered flower placements.
@@ -115,6 +100,7 @@
 />
 
 <Environment url="/textures/equirectangular/hdr/industrial_sunset_puresky_1k.hdr" />
+
 <SoftShadows
   size={10}
   samples={10}
@@ -140,22 +126,22 @@
   </T.MeshStandardMaterial>
 </T.Mesh>
 
-{#if subject === 'plant' && $gltf}
+{#if subject === 'plant' && $plantGltf}
   <T.Mesh
     castShadow
     receiveShadow
   >
-    <T is={$gltf.nodes.concrete_pot_lambert3_0.geometry} />
-    <T is={$gltf.materials.lambert3} />
+    <T is={$plantGltf.nodes.concrete_pot_lambert3_0.geometry} />
+    <T is={$plantGltf.materials.lambert3} />
   </T.Mesh>
 
   <T.Mesh
     castShadow
     receiveShadow
   >
-    <T is={$gltf.nodes.plant_lambert2_0.geometry} />
+    <T is={$plantGltf.nodes.plant_lambert2_0.geometry} />
     <T
-      is={$gltf.materials.lambert2}
+      is={$plantGltf.materials.lambert2}
       roughness={0.4}
     />
     <Wobble
