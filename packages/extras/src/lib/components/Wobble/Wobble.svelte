@@ -21,7 +21,11 @@
     pulse: Uniform<number>
     drift: Uniform<number>
     bendiness: Uniform<number>
+
+    // wobble "up", pre-normalized
     axis: Uniform<Vector3>
+    across1: Uniform<Vector3>
+    across2: Uniform<Vector3>
     anchor: Uniform<number>
     hasAnchor: Uniform<boolean>
     forceDirection: Uniform<Vector3>
@@ -119,6 +123,8 @@
     shader.uniforms.drift = uniforms.drift
     shader.uniforms.bendiness = uniforms.bendiness
     shader.uniforms.axis = uniforms.axis
+    shader.uniforms.across1 = uniforms.across1
+    shader.uniforms.across2 = uniforms.across2
     shader.uniforms.anchor = uniforms.anchor
     shader.uniforms.hasAnchor = uniforms.hasAnchor
     shader.uniforms.forceDirection = uniforms.forceDirection
@@ -133,6 +139,8 @@
       uniform float drift;
       uniform float bendiness;
       uniform vec3 axis;
+      uniform vec3 across1;
+      uniform vec3 across2;
       uniform float anchor;
       uniform bool hasAnchor;
       uniform vec3 forceDirection;
@@ -141,17 +149,10 @@
       ${shader.vertexShader}
     `
 
+    // Each branch below is gated on a uniform comparison
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
-      `// Build an orthonormal basis aligned to the wobble axis. The two
-       // perpendicular axes (across1/across2) span the "across" plane that
-       // bend, noise, and force direction all live in.
-       vec3 wobbleAxis = normalize(axis);
-       vec3 wobbleRef = abs(wobbleAxis.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-       vec3 across1 = normalize(cross(wobbleAxis, wobbleRef));
-       vec3 across2 = cross(wobbleAxis, across1);
-
-       float along = dot(position, wobbleAxis);
+      `float along = dot(position, axis);
        vec2 acrossPos = vec2(dot(position, across1), dot(position, across2));
 
        // For InstancedMesh / BatchedMesh, fold each instance's "across"
@@ -169,61 +170,78 @@
        float weight = hasAnchor ? abs(along - anchor) : 1.0;
        vec2 spatialSample = (acrossPos + instanceOffset) * frequency;
 
-       float sineWobble = sin(1.0 + time + along * frequency + instanceOffset.x);
-       
-       // Domain warping: sample fBM once to perturb the input of a second
-       // fBM call. Breaks up the grid-aligned feel of straight noise and
-       // gives fluid, swirling motion (iquilezles's classic trick).
-       vec3 noiseInput = vec3(spatialSample * 0.6, time * 0.5);
-       float warpScale = 0.5;
-       vec3 warpedInput = noiseInput + warpScale * vec3(
-         wobbleFbm(noiseInput),
-         wobbleFbm(noiseInput + vec3(5.2, 1.3, 0.0)),
-         wobbleFbm(noiseInput + vec3(0.0, 2.1, 4.6))
-       );
-       float noiseWobble = wobbleFbm(warpedInput);
-       float wobble = mix(sineWobble, noiseWobble, noise);
-       // Slow time-only fBM modulates magnitude when "pulse > 0". Instance
-       // offset feeds in so neighbours pulse out of sync.
-       float pulseNoise = wobbleFbm(vec3(time * 0.3 + instanceOffset.x * 0.3, 0.0, instanceOffset.y * 0.3)) * 0.5 + 0.5;
-       float gust = mix(1.0, 0.1 + 1.4 * pulseNoise, pulse);
+       float wobble = sin(1.0 + time + along * frequency + instanceOffset.x);
+       if (noise > 0.0) {
+         // Domain warping: sample fBM once to perturb the input of a second
+         // fBM call. Breaks up the grid-aligned feel of straight noise.
+         vec3 noiseInput = vec3(spatialSample * 0.6, time * 0.5);
+         vec3 warpedInput = noiseInput + 0.5 * vec3(
+           wobbleFbm(noiseInput),
+           wobbleFbm(noiseInput + vec3(5.2, 1.3, 0.0)),
+           wobbleFbm(noiseInput + vec3(0.0, 2.1, 4.6))
+         );
+         wobble = mix(wobble, wobbleFbm(warpedInput), noise);
+       }
+
+       float gust = 1.0;
+       if (pulse > 0.0) {
+         // Slow time-only fBM modulates magnitude. Instance offset feeds in
+         // so neighbours pulse out of sync.
+         float pulseNoise = wobbleFbm(vec3(time * 0.3 + instanceOffset.x * 0.3, 0.0, instanceOffset.y * 0.3)) * 0.5 + 0.5;
+         gust = mix(1.0, 0.1 + 1.4 * pulseNoise, pulse);
+       }
+
        float theta = wobble * gust / 2.0 * factor * weight;
 
-       // Twist around the wobble axis.
-       vec3 twisted = wobbleRotate(position, wobbleAxis, theta);
-       ${withNormals ? 'vec3 twistedNormal = wobbleRotate(vNormal, wobbleAxis, theta);' : ''}
+       vec3 transformed = position;
+       ${withNormals ? 'vec3 normalAcc = vNormal;' : ''}
 
-       // Bend: tilt in the across-plane toward forceDirection.
-       float pivotAlong = hasAnchor ? anchor : 0.0;
-       vec3 anchorPoint = wobbleAxis * pivotAlong;
-       vec3 forceDir;
-       if (hasForceDirection) {
-         vec3 fd = forceDirection - dot(forceDirection, wobbleAxis) * wobbleAxis;
-         float fdLen = length(fd);
-         forceDir = fdLen > 0.0001 ? fd / fdLen : across1;
-       } else {
-         // Slow drift scaled by "drift". At 0 the direction holds steady,
-         // at 1 it sweeps the full circle over time.
-         float driftAngle = wobbleFbm(vec3(time * 0.08, 0.0, 0.0)) * 3.14159 * drift;
-         forceDir = across1 * cos(driftAngle) + across2 * sin(driftAngle);
+       // Twist around the wobble axis. Skipped entirely when bendiness == 1
+       // because the bend path fully replaces the position.
+       if (bendiness < 1.0) {
+         transformed = wobbleRotate(position, axis, theta);
+         ${withNormals ? 'normalAcc = wobbleRotate(vNormal, axis, theta);' : ''}
        }
-       vec3 bendAxisVec = cross(wobbleAxis, forceDir);
-       // Bend uses its own slow oscillation — macroscopic sway is much
-       // slower than the per-vertex twist flutter.
-       float bendUniform = sin(time * 0.25 + instanceOffset.x * 0.2);
-       float bendPerVertex = wobbleFbm(vec3(spatialSample * 0.3, time * 0.15));
-       float bendWobble = mix(bendUniform, bendPerVertex, noise);
-       float bendTheta = bendWobble * gust * factor * weight / 2.0;
-       vec3 fromAnchor = position - anchorPoint;
-       vec3 bent = wobbleRotate(fromAnchor, bendAxisVec, bendTheta) + anchorPoint;
 
-       vec3 transformed = mix(twisted, bent, bendiness);
-       ${
-         withNormals
-           ? `vec3 bentNormal = wobbleRotate(vNormal, bendAxisVec, bendTheta);
-            vNormal = mix(twistedNormal, bentNormal, bendiness);`
-           : ''
-       }`
+       // Bend: tilt in the across-plane toward forceDirection. Skipped when
+       // bendiness == 0; otherwise blended with the twist above.
+       if (bendiness > 0.0) {
+         float pivotAlong = hasAnchor ? anchor : 0.0;
+         vec3 anchorPoint = axis * pivotAlong;
+
+         vec3 forceDir;
+         if (hasForceDirection) {
+           vec3 fd = forceDirection - dot(forceDirection, axis) * axis;
+           float fdLen = length(fd);
+           forceDir = fdLen > 0.0001 ? fd / fdLen : across1;
+         } else if (drift > 0.0) {
+           float driftAngle = wobbleFbm(vec3(time * 0.08, 0.0, 0.0)) * 3.14159 * drift;
+           forceDir = across1 * cos(driftAngle) + across2 * sin(driftAngle);
+         } else {
+           forceDir = across1;
+         }
+         vec3 bendAxisVec = cross(axis, forceDir);
+
+         // Bend uses its own slow oscillation; macroscopic sway is much
+         // slower than the per-vertex twist flutter.
+         float bendUniform = sin(time * 0.25 + instanceOffset.x * 0.2);
+         float bendWobble = bendUniform;
+         if (noise > 0.0) {
+           float bendPerVertex = wobbleFbm(vec3(spatialSample * 0.3, time * 0.15));
+           bendWobble = mix(bendUniform, bendPerVertex, noise);
+         }
+         float bendTheta = bendWobble * gust * factor * weight / 2.0;
+
+         vec3 bent = wobbleRotate(position - anchorPoint, bendAxisVec, bendTheta) + anchorPoint;
+         transformed = mix(transformed, bent, bendiness);
+         ${
+           withNormals
+             ? `normalAcc = mix(normalAcc, wobbleRotate(vNormal, bendAxisVec, bendTheta), bendiness);`
+             : ''
+         }
+       }
+
+       ${withNormals ? 'vNormal = normalAcc;' : ''}`
     )
   }
 
@@ -304,11 +322,15 @@
     drift: new Uniform(0),
     bendiness: new Uniform(0),
     axis: new Uniform(new Vector3(0, 1, 0)),
+    across1: new Uniform(new Vector3(1, 0, 0)),
+    across2: new Uniform(new Vector3(0, 0, 1)),
     anchor: new Uniform(0),
     hasAnchor: new Uniform(false),
     forceDirection: new Uniform(new Vector3()),
     hasForceDirection: new Uniform(false)
   }
+
+  const basisRef = new Vector3()
 
   $effect(() => {
     uniforms.factor.value = factor
@@ -341,7 +363,12 @@
   })
 
   $effect(() => {
-    uniforms.axis.value.set(axis[0], axis[1], axis[2])
+    // Pre-normalize axis and derive an orthonormal across-plane
+    const a = uniforms.axis.value.set(axis[0], axis[1], axis[2]).normalize()
+    basisRef.set(0, 1, 0)
+    if (Math.abs(a.y) >= 0.9) basisRef.set(1, 0, 0)
+    uniforms.across1.value.crossVectors(a, basisRef).normalize()
+    uniforms.across2.value.crossVectors(a, uniforms.across1.value)
     invalidate()
   })
 
