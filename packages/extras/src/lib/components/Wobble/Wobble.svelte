@@ -149,7 +149,8 @@
       ${shader.vertexShader}
     `
 
-    // Each branch below is gated on a uniform comparison
+    // Each branch below is gated on a uniform comparison so the compiler
+    // folds it out when the prop is at its neutral value.
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `float along = dot(position, axis);
@@ -172,22 +173,17 @@
 
        float wobble = sin(1.0 + time + along * frequency + instanceOffset.x);
        if (noise > 0.0) {
-         // Domain warping: sample fBM once to perturb the input of a second
-         // fBM call. Breaks up the grid-aligned feel of straight noise.
-         vec3 noiseInput = vec3(spatialSample * 0.6, time * 0.5);
-         vec3 warpedInput = noiseInput + 0.5 * vec3(
-           wobbleFbm(noiseInput),
-           wobbleFbm(noiseInput + vec3(5.2, 1.3, 0.0)),
-           wobbleFbm(noiseInput + vec3(0.0, 2.1, 4.6))
-         );
-         wobble = mix(wobble, wobbleFbm(warpedInput), noise);
+         wobble = mix(wobble, wobbleFbm(vec3(spatialSample * 0.6, time * 0.5)), noise);
        }
 
        float gust = 1.0;
        if (pulse > 0.0) {
-         // Slow time-only fBM modulates magnitude. Instance offset feeds in
-         // so neighbours pulse out of sync.
-         float pulseNoise = wobbleFbm(vec3(time * 0.3 + instanceOffset.x * 0.3, 0.0, instanceOffset.y * 0.3)) * 0.5 + 0.5;
+         // Two sines stacked, offset per-instance so neighbours pulse out of
+         // sync. Maps roughly to [0, 1].
+         float pulseSum =
+           0.6 * sin(time * 0.3 + instanceOffset.x * 0.3) +
+           0.4 * sin(time * 0.71 + instanceOffset.y * 0.3 + 1.3);
+         float pulseNoise = pulseSum * 0.5 + 0.5;
          gust = mix(1.0, 0.1 + 1.4 * pulseNoise, pulse);
        }
 
@@ -215,7 +211,11 @@
            float fdLen = length(fd);
            forceDir = fdLen > 0.0001 ? fd / fdLen : across1;
          } else if (drift > 0.0) {
-           float driftAngle = wobbleFbm(vec3(time * 0.08, 0.0, 0.0)) * 3.14159 * drift;
+           // Two sines stacked; gives a slow non-repeating angle.
+           float driftSum =
+             0.6 * sin(time * 0.08) +
+             0.4 * sin(time * 0.19 + 2.1);
+           float driftAngle = driftSum * 3.14159 * drift;
            forceDir = across1 * cos(driftAngle) + across2 * sin(driftAngle);
          } else {
            forceDir = across1;
@@ -363,7 +363,8 @@
   })
 
   $effect(() => {
-    // Pre-normalize axis and derive an orthonormal across-plane
+    // Build the orthonormal basis (axis + two perpendicular axes) once on
+    // the CPU. Saves recomputing it per vertex.
     const a = uniforms.axis.value.set(axis[0], axis[1], axis[2]).normalize()
     basisRef.set(0, 1, 0)
     if (Math.abs(a.y) >= 0.9) basisRef.set(1, 0, 0)

@@ -2,8 +2,7 @@ import type { Material, Vector3Tuple } from 'three'
 
 export interface WobbleProps {
   /**
-   * How fast the internal animation clock advances. Ignored when `time` is
-   * provided as a prop.
+   * How fast the wobble animates. Ignored when `time` is provided.
    * @default 1
    */
   speed?: number
@@ -16,33 +15,30 @@ export interface WobbleProps {
   factor?: number
 
   /**
-   * Multiplier on the spatial scale of the per-vertex noise sampling and
-   * the sine phase. Increase for tighter / shorter-wavelength wobbles
-   * (useful on large geometry); decrease for broader sway on small models.
+   * How tight the per-vertex wobble pattern is. Increase for large geometry,
+   * decrease for small. Default is tuned for ~1–3 unit meshes.
    * @default 1
    */
   frequency?: number
 
   /**
-   * Per-vertex noise blend. 0 keeps every vertex in lockstep on a clean
-   * sine; 1 samples each vertex from a 3D simplex/fBM field so neighbours
-   * fall out of phase.
+   * Per-vertex variation. 0 keeps every vertex in lockstep on a clean sine;
+   * 1 has neighbours fall out of phase from a noise field.
    * @default 0
    */
   noise?: number
 
   /**
-   * Slow time-only amplitude modulation. 0 keeps the wobble amplitude
-   * steady; 1 lets it swell and fade over time. Sampled with no spatial
-   * coords, so the whole mesh pulses together.
+   * Amplitude pulsation. 0 keeps the wobble steady; 1 lets the whole mesh
+   * swell and fade over time.
    * @default 0
    */
   pulse?: number
 
   /**
-   * Direction drift for bend. 0 holds the bend direction steady; 1 lets it
-   * wander around the full circle via a slow time-only noise. Only matters
-   * when `bendiness > 0` and `forceDirection` is not provided.
+   * Bend-direction wander. 0 holds the bend direction steady; 1 lets it
+   * sweep the full circle over time. Only used when `bendiness > 0` and
+   * `forceDirection` is unset.
    * @default 0
    */
   drift?: number
@@ -76,17 +72,17 @@ export interface WobbleProps {
 
   /**
    * Direction the bend leans toward, in local geometry space. The component
-   * along `axis` is projected out, so only the perpendicular component
-   * matters. When omitted, a slowly drifting direction is generated from
-   * noise — the wind-like default. Set this when the force has a known
-   * heading, e.g. an explosion, a fan, an avatar walking past.
+   * along `axis` is projected out, so only the perpendicular part matters.
+   * When omitted, the direction drifts on its own (see `drift`). Set this
+   * when the force has a known heading — an explosion, a fan, an avatar
+   * walking past.
    */
   forceDirection?: Vector3Tuple
 
   /**
-   * Drive the animation clock externally. When provided, `speed` is ignored
-   * and the internal task is paused — useful for syncing wobble to a
-   * global timeline, scrubbing, or sharing time across instances.
+   * Drive the clock yourself, in seconds. When set, `speed` is ignored.
+   * Useful for syncing many wobbles to one timeline or scrubbing through
+   * poses.
    */
   time?: number
 

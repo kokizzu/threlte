@@ -12,7 +12,7 @@ componentSignature:
           name: 'speed',
           type: 'number',
           default: '1',
-          description: 'How fast the internal animation clock advances. Ignored when `time` is provided.'
+          description: 'How fast the wobble animates. Ignored when `time` is provided.'
         },
         {
           name: 'factor',
@@ -24,25 +24,25 @@ componentSignature:
           name: 'frequency',
           type: 'number',
           default: '1',
-          description: 'Multiplier on the spatial scale of the per-vertex noise sampling and sine phase. Increase for tighter, shorter-wavelength wobbles on large geometry; decrease for broader sway on small models.'
+          description: 'How tight the per-vertex wobble pattern is. Increase for large geometry, decrease for small. Default is tuned for ~1–3 unit meshes.'
         },
         {
           name: 'noise',
           type: 'number',
           default: '0',
-          description: 'Per-vertex noise blend. 0 keeps every vertex in lockstep on a clean sine; 1 samples each vertex from a 3D simplex/fBM field so neighbours fall out of phase.'
+          description: 'Per-vertex variation. 0 keeps every vertex in lockstep on a clean sine; 1 has neighbours fall out of phase from a noise field.'
         },
         {
           name: 'pulse',
           type: 'number',
           default: '0',
-          description: 'Slow time-only amplitude modulation. 0 keeps amplitude steady; 1 lets it swell and fade over time. The whole mesh pulses together.'
+          description: 'Amplitude pulsation. 0 keeps the wobble steady; 1 lets the whole mesh swell and fade over time.'
         },
         {
           name: 'drift',
           type: 'number',
           default: '0',
-          description: 'Direction drift for bend. 0 holds bend direction steady; 1 lets it wander the full circle over time. Only matters when bendiness > 0 and forceDirection is not provided.'
+          description: 'Bend-direction wander. 0 holds the bend direction steady; 1 lets it sweep the full circle over time. Only used when `bendiness > 0` and `forceDirection` is unset.'
         },
         {
           name: 'bendiness',
@@ -54,22 +54,22 @@ componentSignature:
           name: 'axis',
           type: 'Vector3Tuple',
           default: '[0, 1, 0]',
-          description: 'The wobble "up" direction in local geometry space. Twist happens around this axis; bend tilts perpendicular to it. Change for sideways objects or models exported Z-up.'
+          description: 'The wobble "up" direction in local geometry space. Twist happens around this axis; bend tilts perpendicular to it.'
         },
         {
           name: 'anchor',
           type: 'number',
-          description: 'Position along `axis` where the mesh stays anchored. Wobble amplitude scales with each vertex distance from this anchor plane. When omitted, every vertex wobbles equally.'
+          description: 'Position along `axis` where the mesh stays anchored. Wobble amplitude scales with each vertex distance from this plane. When omitted, every vertex wobbles equally.'
         },
         {
           name: 'forceDirection',
           type: 'Vector3Tuple',
-          description: 'Direction the bend leans toward, in local geometry space. The component along `axis` is projected out. When omitted, a drifting direction is generated from noise (wind-like default).'
+          description: 'Direction the bend leans toward, in local geometry space. The component along `axis` is projected out. When omitted, the direction drifts on its own (see `drift`).'
         },
         {
           name: 'time',
           type: 'number',
-          description: 'Drive the animation clock externally. When provided, `speed` is ignored and the internal task is paused — useful for syncing wobble to a global timeline.'
+          description: 'Drive the clock yourself, in seconds. When set, `speed` is ignored. Useful for syncing many wobbles to one timeline or scrubbing through poses.'
         },
         {
           name: 'material',
@@ -80,7 +80,7 @@ componentSignature:
           name: 'shadow',
           type: 'boolean',
           default: 'true',
-          description: 'Whether the shadow silhouette should follow the wobble via attached custom depth/distance materials. Set to false to skip — useful if the mesh does not cast shadows, or you manage those materials yourself.'
+          description: 'Whether the shadow silhouette follows the wobble via attached custom depth/distance materials. Set to false to skip — useful if the mesh does not cast shadows, or you manage those materials yourself.'
         }
       ]
   }
@@ -88,8 +88,8 @@ componentSignature:
 
 `<Wobble>` adds a time-varying vertex displacement to whatever material is already on its parent
 mesh. Because it patches the material rather than replacing it, you can wobble any
-`MeshStandardMaterial`, `MeshPhysicalMaterial`, `MeshLambertMaterial`, `MeshToonMaterial`, and so
-on — pick the look you want, then drop `<Wobble>` in to make it move.
+`MeshStandardMaterial`, `MeshPhysicalMaterial`, `MeshToonMaterial`, etc. —
+pick the look you want, then drop `<Wobble>` in to make it move.
 
 <Example path="extras/wobble" />
 
@@ -119,15 +119,13 @@ on — pick the look you want, then drop `<Wobble>` in to make it move.
 ```
 
 The wobble is computed per-vertex, so meshes need enough geometric detail for the deformation
-to look smooth. Increase the segment counts on the geometry if the surface looks faceted.
-
-Setting `speed={0}` pauses the animation without unmounting the component.
+to look smooth.
 
 ### Anchoring the base
 
-Pass `anchor` to pin a plane along the wobble axis. Amplitude grows with each vertex's distance
-from that plane — vertices on the plane don't move, ones farther away move more. This is what
-you want for a plant whose base shouldn't slide around in its pot:
+Pass `anchor` to pin a plane that stays put while everything else wobbles around it. Amplitude
+grows with distance from that plane — what you want for a plant whose base shouldn't slide
+around in its pot:
 
 ```svelte title="AnchoredPlant.svelte"
 <T.Mesh castShadow>
@@ -141,13 +139,20 @@ you want for a plant whose base shouldn't slide around in its pot:
 </T.Mesh>
 ```
 
+### Shadows
+
 Shadows wobble alongside the visible mesh — `<Wobble>` attaches matching `customDepthMaterial`
 and `customDistanceMaterial` to the parent so the shadow silhouette tracks the deformation.
 
-### Pointing the bend
+Set `shadow` to `false` to disable this.
 
-When `bendiness > 0`, an unset `forceDirection` produces a slowly drifting wind-like heading.
-Set `forceDirection` when the force has a known direction — e.g. a blast from a specific side:
+```svelte
+<Wobble shadow={false} />
+```
+
+### Pointing the bend with `forceDirection`
+
+When `bendiness > 0`, setting `forceDirection` produces a bend from a specific side:
 
 ```svelte
 <Wobble
@@ -160,7 +165,7 @@ Set `forceDirection` when the force has a known direction — e.g. a blast from 
 ### Sideways objects
 
 Default `axis` is `[0, 1, 0]` — Y-up. Pass a different axis for models whose "up" is along X or
-Z (a vine, a horizontally-mounted flag, a Z-up model):
+Z:
 
 ```svelte
 <T.Mesh>
@@ -174,11 +179,10 @@ Z (a vine, a horizontally-mounted flag, a Z-up model):
 </T.Mesh>
 ```
 
-### Adjusting frequency for big or small geometry
+### Tuning frequency for geometry size
 
-`frequency` scales the per-vertex spatial sampling. The default (`1`) is tuned for ~1–3 unit
-geometry; on much larger meshes the wobble looks uniform across the whole shape, on tiny ones
-it gets too chaotic. Tune `frequency` to recover the look you want:
+The default `frequency` is tuned for ~1–3 unit meshes. On much larger geometry the wobble looks
+uniform across the whole shape; on tiny ones it gets too chaotic. Adjust to taste:
 
 ```svelte
 <!-- Tall building-sized mesh -->
@@ -212,7 +216,7 @@ a single timeline, scrubbing back and forth, or pausing:
 ### Reacting to material swaps
 
 By default `<Wobble>` patches the parent mesh's material once when it mounts. If you swap
-materials at runtime, pass it in via `material` so the patch follows:
+materials at runtime, pass it in:
 
 ```svelte
 <script lang="ts">

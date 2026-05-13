@@ -78,7 +78,7 @@
 
 <T.PerspectiveCamera
   makeDefault
-  position={[0, 4, 7]}
+  position={[0, 7, 7]}
   fov={35}
 />
 
@@ -123,7 +123,7 @@
       outerRadius={256}
       stops={[
         { offset: 0, color: 'white' },
-        { offset: 1, color: 'rgba(255, 255, 255, 0)' }
+        { offset: 0.7, color: 'rgba(255, 255, 255, 0)' }
       ]}
     />
   </T.MeshStandardMaterial>
