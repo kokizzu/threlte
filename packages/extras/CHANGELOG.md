@@ -1,5 +1,11 @@
 # @threlte/extras
 
+## 9.18.0
+
+### Minor Changes
+
+- cb711f6: Add Wobble component
+
 ## 9.17.1
 
 ### Patch Changes
