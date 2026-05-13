@@ -14,22 +14,21 @@
   } from 'three'
 
   interface WobbleUniforms {
-    time: { value: number }
-    factor: { value: number }
-    frequency: { value: number }
-    noise: { value: number }
-    pulse: { value: number }
-    drift: { value: number }
-    bendiness: { value: number }
-    axis: { value: Vector3 }
-    anchor: { value: number }
-    hasAnchor: { value: boolean }
-    forceDirection: { value: Vector3 }
-    hasForceDirection: { value: boolean }
+    time: Uniform<number>
+    factor: Uniform<number>
+    frequency: Uniform<number>
+    noise: Uniform<number>
+    pulse: Uniform<number>
+    drift: Uniform<number>
+    bendiness: Uniform<number>
+    axis: Uniform<Vector3>
+    anchor: Uniform<number>
+    hasAnchor: Uniform<boolean>
+    forceDirection: Uniform<Vector3>
+    hasForceDirection: Uniform<boolean>
   }
 
-  // Ashima 3D simplex noise + fBM + a Rodrigues rotation helper. All inlined
-  // so users don't need to wire shader code themselves.
+  // Ashima 3D simplex noise + fBM + a Rodrigues rotation helper.
   const WOBBLE_HELPERS_GLSL = `
     vec3 wobbleMod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 wobbleMod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -156,8 +155,7 @@
        vec2 acrossPos = vec2(dot(position, across1), dot(position, across2));
 
        // For InstancedMesh / BatchedMesh, fold each instance's "across"
-       // translation into the noise sample so instances wobble out of
-       // phase. #ifdef guards keep us safe on non-instanced meshes.
+       // translation into the noise sample so instances wobble out of phase.
        vec2 instanceOffset = vec2(0.0);
        #ifdef USE_INSTANCING
          vec3 instTrans = vec3(instanceMatrix[3].x, instanceMatrix[3].y, instanceMatrix[3].z);
@@ -172,6 +170,7 @@
        vec2 spatialSample = (acrossPos + instanceOffset) * frequency;
 
        float sineWobble = sin(1.0 + time + along * frequency + instanceOffset.x);
+       
        // Domain warping: sample fBM once to perturb the input of a second
        // fBM call. Breaks up the grid-aligned feel of straight noise and
        // gives fluid, swirling motion (iquilezles's classic trick).
