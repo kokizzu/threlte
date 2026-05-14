@@ -53,3 +53,15 @@ export type ThrelteEvents = {
 export type InteractivityProps = {
   [K in keyof ThrelteEvents]?: (event: ThrelteEvents[K]) => void
 }
+
+export type DomEventName =
+  | 'click'
+  | 'contextmenu'
+  | 'dblclick'
+  | 'wheel'
+  | 'pointerdown'
+  | 'pointerup'
+  | 'pointerleave'
+  | 'pointerenter'
+  | 'pointermove'
+  | 'pointercancel'
