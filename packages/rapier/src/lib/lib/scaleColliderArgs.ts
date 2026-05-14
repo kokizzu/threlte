@@ -19,6 +19,10 @@ export const scaleColliderArgs = <Shape extends ColliderShapes>(
   args: Parameters<(typeof ColliderDesc)[Shape]>,
   scale: Vector3
 ): Parameters<(typeof ColliderDesc)[Shape]> => {
+  if (scale.lengthSq() === 1) {
+    return args
+  }
+
   // Heightfield only scales the last arg
   const newArgs = args.slice()
   if (shape === 'heightfield') {

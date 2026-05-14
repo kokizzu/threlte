@@ -1,27 +1,25 @@
 <script lang="ts">
-  import { Pane, Checkbox, Button } from 'svelte-tweakpane-ui'
+  import { Pane, Checkbox } from 'svelte-tweakpane-ui'
   import { Canvas } from '@threlte/core'
   import { HTML } from '@threlte/extras'
   import { Debug, World } from '@threlte/rapier'
   import Scene from './Scene.svelte'
 
-  let version = $state(0)
   let debug = $state(true)
+  let materials = $state(true)
 </script>
 
 <Pane
-  title="Auto Colliders"
+  title="Debug"
   position="fixed"
 >
   <Checkbox
     bind:value={debug}
     label="Debug"
   />
-  <Button
-    title="reset"
-    on:click={() => {
-      version += 1
-    }}
+  <Checkbox
+    bind:value={materials}
+    label="Materials"
   />
 </Pane>
 
@@ -32,9 +30,7 @@
         <Debug />
       {/if}
 
-      {#key version}
-        <Scene />
-      {/key}
+      <Scene {materials} />
 
       {#snippet fallback()}
         <HTML transform>
