@@ -44,6 +44,7 @@
   } = usePrismaticJoint([0, 0, 0], [0, 0, 0], [0, 1, 0], [-0.05, REST_OFFSET + 0.1])
 
   const joint = fromStore(jointStore)
+  const plunger = fromStore(rigidBodyB)
 
   let configured = false
   let lastAutoFire = 0
@@ -71,6 +72,15 @@
     spawnQueue.spawn(p.x, p.y + PLUNGER_HALF_HEIGHT + BALL_RADIUS + LOAD_GAP, 0, 0)
     lastSpawnAt = now
   }
+
+  // Pre-load a ball on the plunger as soon as the body is available, so the
+  // game opens with a ball already sitting in the launcher and the player can
+  // fire on their first hold. The sensor + debounce inside loadBall keep this
+  // from double-spawning if the effect re-runs.
+  $effect(() => {
+    if (!plunger.current) return
+    loadBall()
+  })
 
   // Runs in the simulation stage *before* the world steps, so the new motor
   // target is in place by the time rapier solves the joint forces this tick.

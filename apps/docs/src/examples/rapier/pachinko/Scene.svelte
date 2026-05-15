@@ -1,6 +1,6 @@
 <script lang="ts">
   import { T } from '@threlte/core'
-  import { SoftShadows } from '@threlte/extras'
+  import { Bounds, SoftShadows } from '@threlte/extras'
   import { Debug } from '@threlte/rapier'
   import Balls from './Balls.svelte'
   import Cabinet from './Cabinet.svelte'
@@ -15,11 +15,13 @@
   let { debug }: { debug: boolean } = $props()
 </script>
 
+<!-- Camera direction is what we care about — the 3/4 angle. <Bounds> below
+     adjusts the camera distance to fit its children at any viewport size,
+     so this position is just a starting orientation. -->
 <T.PerspectiveCamera
   makeDefault
   fov={40}
   position={[3, 0, 18]}
-  oncreate={(ref) => ref.lookAt(0, -1, 0)}
 />
 
 <SoftShadows />
@@ -43,14 +45,20 @@
   distance={12}
 />
 
-<Cabinet />
-<Frame />
-<Pegs />
-<Windmills />
-<Pockets />
-<Launcher />
+<Bounds
+  animate={false}
+  margin={0.1}
+>
+  <Cabinet />
+  <Frame />
+  <Pegs />
+  <Windmills />
+  <Pockets />
+  <Launcher />
+  <ControlPanelHUD />
+</Bounds>
+
 <Balls />
-<ControlPanelHUD />
 
 {#if debug}
   <Debug />
