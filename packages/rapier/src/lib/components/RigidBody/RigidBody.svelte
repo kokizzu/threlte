@@ -90,9 +90,13 @@
   }
 
   /**
-   * Will come in handy in the future for joints
+   * Stored on userData so per-frame loops can read it without a wasm round-trip
+   * through `world.getRigidBody(handle)`. Tracked reactively so a body re-created
+   * by a `type` / `canSleep` change replaces the stale reference.
    */
-  object.userData.rigidBody = rigidBodyInternal
+  $effect(() => {
+    object.userData.rigidBody = rigidBodyInternal
+  })
 
   $effect(() => {
     rigidBodyInternal.setBodyType(parseRigidBodyType(type), true)

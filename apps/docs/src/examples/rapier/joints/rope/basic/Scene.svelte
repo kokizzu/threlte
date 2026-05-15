@@ -33,7 +33,10 @@
   makeDefault
   position={[-10, 5, 10]}
 >
-  <OrbitControls />
+  <OrbitControls
+    enableDamping
+    enableZoom={false}
+  />
 </T.PerspectiveCamera>
 
 <Grid

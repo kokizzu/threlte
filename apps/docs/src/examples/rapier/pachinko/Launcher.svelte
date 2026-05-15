@@ -1,0 +1,174 @@
+<script lang="ts">
+  import type { PrismaticImpulseJoint } from '@dimforge/rapier3d-compat'
+  import { T, useTask } from '@threlte/core'
+  import { Collider, RigidBody, usePrismaticJoint } from '@threlte/rapier'
+  import { get } from 'svelte/store'
+  import {
+    CHANNEL_BOTTOM_Y,
+    CHANNEL_TOP_Y,
+    CHANNEL_X,
+    FIELD_HEIGHT,
+    ballRegistry,
+    gameState
+  } from './gameState.svelte'
+  import { spawnQueue } from './spawnQueue.svelte'
+
+  // How long (ms) a full hold-to-charge takes. Past this the launcher enters
+  // auto-fire mode and oscillates on its own until the user releases.
+  const CHARGE_TIME_MS = 1400
+  const AUTOFIRE_INTERVAL_MS = 140
+
+  // The anchor sits at the bottom of the launcher; the plunger rides above it
+  // on a prismatic joint. Motor target is the distance along +Y the plunger
+  // sits above the anchor: 0 → fully compressed, REST_OFFSET → at rest.
+  const ANCHOR_Y = -FIELD_HEIGHT / 2 + 0.2
+  const REST_OFFSET = 0.6
+  const COMPRESSED_OFFSET = 0
+
+  // Spring tuning. Critical damping ≈ 2·sqrt(k·m); we want underdamped so the
+  // plunger reaches REST_OFFSET with significant velocity left over to launch
+  // the ball. With a density-50 plunger (m≈0.27kg) and k=4000, critical damping
+  // is ~65 — we pick a small fraction of that for a hard snap.
+  const SPRING_STIFFNESS = 4000
+  const SPRING_DAMPING = 3
+
+  // Where the loaded ball sits above the top of the plunger head before it
+  // gets launched. (Plunger half-height + ball radius + a small gap.)
+  const PLUNGER_HALF_HEIGHT = 0.08
+  const BALL_RADIUS = 0.14
+  const LOAD_GAP = 0.04
+
+  const { rigidBodyA, rigidBodyB, joint } = usePrismaticJoint(
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 1, 0],
+    [-0.05, REST_OFFSET + 0.1]
+  )
+
+  let configured = false
+  let lastAutoFire = 0
+  // Count of balls currently inside the launch-zone sensor. loadBall() refuses
+  // to spawn another while any ball is still in the channel, preventing
+  // pile-ups when auto-fire outruns a launch.
+  let ballsInLaunchZone = 0
+
+  const loadBall = () => {
+    if (ballsInLaunchZone > 0) return
+    const plungerBody = get(rigidBodyB)
+    if (!plungerBody) return
+    const p = plungerBody.translation()
+    spawnQueue.spawn(p.x, p.y + PLUNGER_HALF_HEIGHT + BALL_RADIUS + LOAD_GAP, 0, 0)
+  }
+
+  useTask((delta) => {
+    const j = get(joint) as PrismaticImpulseJoint | undefined
+    if (!j) return
+
+    if (!configured) {
+      j.configureMotorPosition(REST_OFFSET, SPRING_STIFFNESS, SPRING_DAMPING)
+      configured = true
+    }
+
+    // ---- charge / autofire state machine ----
+    if (gameState.holding) {
+      gameState.charge = Math.min(1, gameState.charge + (delta * 1000) / CHARGE_TIME_MS)
+      if (gameState.charge >= 1) gameState.autoFiring = true
+    } else {
+      gameState.charge = 0
+      gameState.autoFiring = false
+    }
+
+    // ---- motor target + ball loading ----
+    let target = REST_OFFSET
+
+    if (gameState.autoFiring) {
+      const now = performance.now()
+      const phase = ((now - lastAutoFire) / AUTOFIRE_INTERVAL_MS) % 1
+      if (phase < 0.45) {
+        target = COMPRESSED_OFFSET
+        if (phase < 0.1) loadBall()
+      } else {
+        target = REST_OFFSET
+      }
+      if (now - lastAutoFire > AUTOFIRE_INTERVAL_MS) lastAutoFire = now
+    } else if (gameState.holding) {
+      target = REST_OFFSET + (COMPRESSED_OFFSET - REST_OFFSET) * gameState.charge
+      if (gameState.charge > 0.05) loadBall()
+    }
+
+    j.configureMotorPosition(target, SPRING_STIFFNESS, SPRING_DAMPING)
+  })
+
+  const sensorCenterY = (CHANNEL_BOTTOM_Y + CHANNEL_TOP_Y) / 2
+  const sensorHalfHeight = (CHANNEL_TOP_Y - CHANNEL_BOTTOM_Y) / 2
+</script>
+
+<!-- Anchor (fixed) — invisible joint root at the bottom of the launcher.
+     Centered on CHANNEL_X so the plunger sits inside the channel without
+     clipping the outer wall. -->
+<T.Group position={[CHANNEL_X, ANCHOR_Y, 0]}>
+  <RigidBody
+    type="fixed"
+    bind:rigidBody={$rigidBodyA}
+  >
+    <T.Mesh castShadow>
+      <T.BoxGeometry args={[0.36, 0.1, 0.36]} />
+      <T.MeshStandardMaterial
+        color="#3a2a55"
+        metalness={0.6}
+        roughness={0.25}
+      />
+    </T.Mesh>
+  </RigidBody>
+</T.Group>
+
+<!-- Plunger (dynamic) — starts at REST_OFFSET above the anchor; the prismatic
+     joint + motor keep it sliding along Y between COMPRESSED and REST. -->
+<T.Group position={[CHANNEL_X, ANCHOR_Y + REST_OFFSET, 0]}>
+  <RigidBody
+    type="dynamic"
+    bind:rigidBody={$rigidBodyB}
+    enabledTranslations={[false, true, false]}
+    enabledRotations={[false, false, false]}
+    linearDamping={0.2}
+    ccd
+  >
+    <Collider
+      shape="cuboid"
+      args={[0.12, PLUNGER_HALF_HEIGHT, 0.12]}
+      restitution={0.1}
+      friction={0.4}
+      density={50}
+    />
+    <T.Mesh castShadow>
+      <T.CylinderGeometry args={[0.12, 0.12, PLUNGER_HALF_HEIGHT * 2, 16]} />
+      <T.MeshStandardMaterial
+        color="#ff3366"
+        emissive="#ff1144"
+        emissiveIntensity={0.4 + gameState.charge * 0.8}
+        metalness={0.5}
+        roughness={0.3}
+      />
+    </T.Mesh>
+  </RigidBody>
+</T.Group>
+
+<!-- Launch-zone sensor — spans the entire inside of the channel, from just
+     above the anchor up to the deflector. Any ball anywhere in the channel
+     blocks new loads, preventing pile-ups. Filtered via ballRegistry so the
+     plunger (also inside this zone) doesn't bump the count. -->
+<T.Group position={[CHANNEL_X, sensorCenterY, 0]}>
+  <Collider
+    shape="cuboid"
+    args={[0.15, sensorHalfHeight, 0.18]}
+    sensor
+    onsensorenter={({ targetCollider }) => {
+      if (!ballRegistry.has(targetCollider.handle)) return
+      ballsInLaunchZone++
+    }}
+    onsensorexit={({ targetCollider }) => {
+      if (!ballRegistry.has(targetCollider.handle)) return
+      ballsInLaunchZone = Math.max(0, ballsInLaunchZone - 1)
+    }}
+  />
+</T.Group>

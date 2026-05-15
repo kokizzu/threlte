@@ -1,17 +1,23 @@
 <script lang="ts">
   import { T } from '@threlte/core'
-  import { OrbitControls, SoftShadows } from '@threlte/extras'
+  import { OrbitControls } from '@threlte/extras'
   import { Collider, Debug, RigidBody } from '@threlte/rapier'
-  import Pendulum from './Pendulum.svelte'
+  import Press from './Press.svelte'
 
   let { debug, resetKey }: { debug: boolean; resetKey: number } = $props()
 
-  const stack = Array.from({ length: 4 }, (_, i) => i)
+  const cubes: [number, number, number][] = [
+    [-1.1, 1.0, -0.6],
+    [-0.5, 1.0, 0.5],
+    [0.2, 1.0, -0.3],
+    [0.8, 1.0, 0.4],
+    [1.2, 1.0, -0.5]
+  ]
 </script>
 
 <T.PerspectiveCamera
   makeDefault
-  position={[6, 4, 10]}
+  position={[5, 4, 10]}
   fov={50}
 >
   <OrbitControls
@@ -23,34 +29,29 @@
 
 <T.DirectionalLight
   castShadow
-  intensity={2}
   position={[8, 20, -3]}
-  shadow.camera.top={-20}
-  shadow.camera.bottom={20}
-  shadow.mapSize.width={1024}
-  shadow.mapSize.height={1024}
 />
-<T.AmbientLight intensity={1} />
-
-<SoftShadows />
+<T.AmbientLight intensity={0.4} />
 
 {#if debug}
   <Debug />
 {/if}
 
 {#key resetKey}
-  <Pendulum />
+  <Press />
 
-  {#each stack as i}
-    <T.Group position={[-0.5, 0.5 + i, 0]}>
+  {#each cubes as pos (pos)}
+    <T.Group position={pos}>
       <RigidBody>
         <Collider
           shape="cuboid"
-          args={[0.5, 0.5, 0.5]}
+          args={[0.15, 0.15, 0.15]}
+          density={3}
+          friction={1.5}
         />
         <T.Mesh castShadow>
-          <T.BoxGeometry args={[1, 1, 1]} />
-          <T.MeshStandardMaterial color="#335086" />
+          <T.BoxGeometry args={[0.3, 0.3, 0.3]} />
+          <T.MeshStandardMaterial color="#FE3D00" />
         </T.Mesh>
       </RigidBody>
     </T.Group>

@@ -1,23 +1,8 @@
 <script lang="ts">
-  import type { RigidBody as RapierRigidBody } from '@dimforge/rapier3d-compat'
   import { T } from '@threlte/core'
   import { Collider, CollisionGroups, RigidBody, useRevoluteJoint } from '@threlte/rapier'
 
-  let pivot = $state<RapierRigidBody>()
-  let arm = $state<RapierRigidBody>()
-
-  const { rigidBodyA, rigidBodyB } = useRevoluteJoint(
-    [0, 0, 0],
-    [0, 2, 0],
-    [0, 0, 1]
-  )
-
-  $effect(() => {
-    if (pivot && arm) {
-      rigidBodyA.set(pivot)
-      rigidBodyB.set(arm)
-    }
-  })
+  const { rigidBodyA, rigidBodyB } = useRevoluteJoint([0, 0, 0], [0, 2, 0], [0, 0, 1])
 </script>
 
 <CollisionGroups
@@ -27,7 +12,7 @@
   <T.Group position={[0, 6, 0]}>
     <RigidBody
       type="fixed"
-      bind:rigidBody={pivot}
+      bind:rigidBody={$rigidBodyA}
     >
       <T.Mesh>
         <T.BoxGeometry args={[0.3, 0.3, 0.3]} />
@@ -40,7 +25,7 @@
     position={[1.732, 5, 0]}
     rotation={[0, 0, Math.PI / 3]}
   >
-    <RigidBody bind:rigidBody={arm}>
+    <RigidBody bind:rigidBody={$rigidBodyB}>
       <Collider
         shape="cuboid"
         args={[0.2, 1.5, 0.2]}
