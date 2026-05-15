@@ -31,7 +31,25 @@
   }}
 />
 
-<div>
+<!-- Pointer events mirror the spacebar so a touch on mobile (or a mouse hold
+     on desktop) charges + releases the launcher the same way. The Pane is
+     `position: fixed` and rendered outside this wrapper, so touches on it
+     never bubble here and don't accidentally charge. -->
+<div
+  onpointerdown={(event) => {
+    if (event.button !== 0 || !event.isPrimary) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    gameState.holding = true
+  }}
+  onpointerup={(event) => {
+    if (!event.isPrimary) return
+    gameState.holding = false
+  }}
+  onpointercancel={(event) => {
+    if (!event.isPrimary) return
+    gameState.holding = false
+  }}
+>
   <Canvas>
     <World gravity={[0, -18, 0]}>
       <Scene {debug} />
@@ -44,5 +62,7 @@
     position: relative;
     height: 100%;
     background: radial-gradient(ellipse at center, #1a1530 0%, #0a0814 70%);
+    /* Block touch-scrolling / double-tap zoom so a hold actually holds. */
+    touch-action: none;
   }
 </style>
