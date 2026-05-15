@@ -15,9 +15,6 @@
   let { debug }: { debug: boolean } = $props()
 </script>
 
-<!-- Slight off-axis camera looking at a point below the field centre, so the
-     crown, the playfield and the tilted control panel all sit naturally in
-     the frame at a 3/4 perspective. -->
 <T.PerspectiveCamera
   makeDefault
   fov={40}

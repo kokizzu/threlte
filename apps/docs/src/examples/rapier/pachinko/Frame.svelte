@@ -1,12 +1,7 @@
 <script lang="ts">
   import { T } from '@threlte/core'
   import { Collider, RigidBody } from '@threlte/rapier'
-  import {
-    CHANNEL_BOTTOM_Y,
-    CHANNEL_TOP_Y,
-    FIELD_HEIGHT,
-    FIELD_WIDTH
-  } from './gameState.svelte'
+  import { CHANNEL_BOTTOM_Y, CHANNEL_TOP_Y, FIELD_HEIGHT, FIELD_WIDTH } from './gameState.svelte'
 
   const wallThickness = 0.18
   const channelWidth = 0.5

@@ -17,19 +17,11 @@
     jackpot: 'JACKPOT +250'
   }
 
-  // The HUD cards live on the surface of the tilted control panel, parented to
-  // a Group with the same tilt as the cabinet geometry. The panel mesh in
-  // Cabinet.svelte is offset by -CONTROL_PANEL_HEIGHT/2, so panel local Y=0
-  // is its top edge and Y=-CONTROL_PANEL_HEIGHT is its bottom edge. We centre
-  // the cards on Y = -CONTROL_PANEL_HEIGHT/2.
   const panelHalfW = CABINET_WIDTH / 2
   const panelCenterY = -CONTROL_PANEL_HEIGHT / 2
-  // Shrink the HTML so two ~200-pixel cards fit side by side on a ~7-unit-wide
-  // panel. <HTML transform> maps ~40 CSS pixels to 1 world unit at default,
-  // so a 200px card is ~5 units wide — this scale brings each card down to
-  // ~3 units across, leaving room between them on the panel.
+
   const cardScale = 0.6
-  const cardZ = 0.26 // just in front of the panel surface to avoid z-fighting
+  const cardZ = 0.26
 </script>
 
 <T.Group
@@ -85,8 +77,6 @@
 </T.Group>
 
 <style>
-  /* These elements ride on a CSS3D-transformed plane, but the styling is
-     identical to the original screen-space HUD — exactly what we wanted. */
   .score-card {
     background: rgba(20, 12, 40, 0.85);
     border: 1px solid rgba(255, 200, 80, 0.35);

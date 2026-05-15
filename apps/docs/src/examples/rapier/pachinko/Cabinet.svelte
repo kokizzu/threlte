@@ -56,7 +56,7 @@
 </T.Group>
 
 <!-- Side rails — vertical pillars flanking the playfield. -->
-{#each [-1, 1] as side}
+{#each [-1, 1] as side (side)}
   <T.Group position={[side * (halfCabinetW - rail / 2), 0, 0]}>
     <T.Mesh
       castShadow

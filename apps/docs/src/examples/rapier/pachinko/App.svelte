@@ -10,7 +10,7 @@
 
 <Pane
   position="fixed"
-  title="Pachinko"
+  title=""
 >
   <Checkbox
     bind:value={debug}
@@ -19,14 +19,14 @@
 </Pane>
 
 <svelte:window
-  onkeydown={(e) => {
-    if (e.code !== 'Space' || e.repeat) return
-    e.preventDefault()
+  onkeydown={(event) => {
+    if (event.code !== 'Space' || event.repeat) return
+    event.preventDefault()
     gameState.holding = true
   }}
-  onkeyup={(e) => {
-    if (e.code !== 'Space') return
-    e.preventDefault()
+  onkeyup={(event) => {
+    if (event.code !== 'Space') return
+    event.preventDefault()
     gameState.holding = false
   }}
 />
@@ -43,7 +43,6 @@
   div {
     position: relative;
     height: 100%;
-    background:
-      radial-gradient(ellipse at center, #1a1530 0%, #0a0814 70%);
+    background: radial-gradient(ellipse at center, #1a1530 0%, #0a0814 70%);
   }
 </style>

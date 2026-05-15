@@ -1,8 +1,7 @@
 <script lang="ts">
-  import type { PrismaticImpulseJoint } from '@dimforge/rapier3d-compat'
-  import { T, useTask } from '@threlte/core'
-  import { Collider, RigidBody, usePrismaticJoint } from '@threlte/rapier'
-  import { get } from 'svelte/store'
+  import { T } from '@threlte/core'
+  import { Collider, RigidBody, usePhysicsTask, usePrismaticJoint } from '@threlte/rapier'
+  import { fromStore, get } from 'svelte/store'
   import {
     CHANNEL_BOTTOM_Y,
     CHANNEL_TOP_Y,
@@ -15,7 +14,7 @@
 
   // How long (ms) a full hold-to-charge takes. Past this the launcher enters
   // auto-fire mode and oscillates on its own until the user releases.
-  const CHARGE_TIME_MS = 1400
+  const CHARGE_TIME_MS = 1000
   const AUTOFIRE_INTERVAL_MS = 140
 
   // The anchor sits at the bottom of the launcher; the plunger rides above it
@@ -38,34 +37,48 @@
   const BALL_RADIUS = 0.14
   const LOAD_GAP = 0.04
 
-  const { rigidBodyA, rigidBodyB, joint } = usePrismaticJoint(
-    [0, 0, 0],
-    [0, 0, 0],
-    [0, 1, 0],
-    [-0.05, REST_OFFSET + 0.1]
-  )
+  const {
+    rigidBodyA,
+    rigidBodyB,
+    joint: jointStore
+  } = usePrismaticJoint([0, 0, 0], [0, 0, 0], [0, 1, 0], [-0.05, REST_OFFSET + 0.1])
+
+  const joint = fromStore(jointStore)
 
   let configured = false
   let lastAutoFire = 0
+
   // Count of balls currently inside the launch-zone sensor. loadBall() refuses
   // to spawn another while any ball is still in the channel, preventing
   // pile-ups when auto-fire outruns a launch.
   let ballsInLaunchZone = 0
 
+  // Local debounce — the sensor's `enter` event doesn't fire on the same
+  // physics tick as the spawn, so without this guard multiple loadBall()
+  // calls in quick succession (e.g. several physics substeps inside one
+  // charging frame) could each see `ballsInLaunchZone === 0` and spawn.
+  let lastSpawnAt = 0
+
+  const SPAWN_DEBOUNCE_MS = 80
+
   const loadBall = () => {
     if (ballsInLaunchZone > 0) return
+    const now = performance.now()
+    if (now - lastSpawnAt < SPAWN_DEBOUNCE_MS) return
     const plungerBody = get(rigidBodyB)
     if (!plungerBody) return
     const p = plungerBody.translation()
     spawnQueue.spawn(p.x, p.y + PLUNGER_HALF_HEIGHT + BALL_RADIUS + LOAD_GAP, 0, 0)
+    lastSpawnAt = now
   }
 
-  useTask((delta) => {
-    const j = get(joint) as PrismaticImpulseJoint | undefined
-    if (!j) return
+  // Runs in the simulation stage *before* the world steps, so the new motor
+  // target is in place by the time rapier solves the joint forces this tick.
+  usePhysicsTask((delta) => {
+    const currentJoint = joint.current
 
     if (!configured) {
-      j.configureMotorPosition(REST_OFFSET, SPRING_STIFFNESS, SPRING_DAMPING)
+      currentJoint.configureMotorPosition(REST_OFFSET, SPRING_STIFFNESS, SPRING_DAMPING)
       configured = true
     }
 
@@ -96,7 +109,7 @@
       if (gameState.charge > 0.05) loadBall()
     }
 
-    j.configureMotorPosition(target, SPRING_STIFFNESS, SPRING_DAMPING)
+    currentJoint.configureMotorPosition(target, SPRING_STIFFNESS, SPRING_DAMPING)
   })
 
   const sensorCenterY = (CHANNEL_BOTTOM_Y + CHANNEL_TOP_Y) / 2

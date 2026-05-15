@@ -18,20 +18,20 @@ export const CONTROL_PANEL_HEIGHT = 2.4
 export const CONTROL_PANEL_Y = -FIELD_HEIGHT / 2
 export const CONTROL_PANEL_TILT = -Math.PI / 7 // ~-25°, top edge stays at the field, panel angles forward
 
+// Bar half-length 0.45 + bar half-thickness 0.035 + ball radius 0.14 + a touch
+// of breathing room → ~0.65. Pegs whose centre falls inside this radius around
+// a windmill hub are skipped.
+export const WINDMILL_CLEARANCE = 0.65
+
 // Windmill placements. Shared with Pegs so it can clear the spin radius —
 // otherwise the bar collides with adjacent pegs and gets locked in place.
-export const WINDMILLS: { position: [number, number, number]; spin: number }[] = [
+export const windmills: { position: [number, number, number]; spin: number }[] = [
   { position: [-1.55, 1.3, 0], spin: 0.6 },
   { position: [1.2, 1.3, 0], spin: -0.6 },
   { position: [-0.2, 0.3, 0], spin: 0 },
   { position: [-1.55, -1.7, 0], spin: -0.4 },
   { position: [1.2, -1.7, 0], spin: 0.4 }
 ]
-
-// Bar half-length 0.45 + bar half-thickness 0.035 + ball radius 0.14 + a touch
-// of breathing room → ~0.65. Pegs whose centre falls inside this radius around
-// a windmill hub are skipped.
-export const WINDMILL_CLEARANCE = 0.65
 
 export const gameState = $state({
   holding: false,

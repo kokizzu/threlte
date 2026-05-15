@@ -9,10 +9,6 @@
     roughness: 0.18
   })
 
-  // Module-scope so all balls reuse the same arrays — RigidBody's $effects re-apply
-  // configuration whenever the prop reference changes, and inline array literals in
-  // the template create fresh references on every parent render. Sharing one frozen
-  // tuple keeps Object.is true and short-circuits those re-applications.
   const enabledTranslations: [boolean, boolean, boolean] = [true, true, false]
   const enabledRotations: [boolean, boolean, boolean] = [false, false, true]
 </script>
@@ -29,36 +25,29 @@
   import { ballRegistry } from './gameState.svelte'
   import { spawnQueue } from './spawnQueue.svelte'
 
-  let {
-    id,
-    position,
-    linearVelocity
-  }: {
+  interface Props {
     id: number
     position: [number, number, number]
     linearVelocity: [number, number, number]
-  } = $props()
+  }
 
-  let collider = $state<RapierCollider>()
-  let rigidBody = $state<RapierRigidBody>()
+  let { id, position, linearVelocity }: Props = $props()
+
+  let collider = $state.raw<RapierCollider>()
+  let rigidBody = $state.raw<RapierRigidBody>()
 
   // Stable handler — created once per instance.
   const despawn = () => spawnQueue.despawn(id)
 
-  // Apply the launch velocity exactly once, when the body becomes available.
-  // We deliberately don't bind to `linearVelocity` here: RigidBody's prop-bound
-  // setLinvel effect would otherwise re-fire whenever the parent's keyed
-  // {#each} re-evaluated this child, resetting every in-flight ball.
   $effect(() => {
-    if (!rigidBody) return
     untrack(() => {
-      rigidBody!.setLinvel({ x: linearVelocity[0], y: linearVelocity[1], z: 0 }, true)
+      rigidBody?.setLinvel({ x: linearVelocity[0], y: linearVelocity[1], z: 0 }, true)
     })
   })
 
   $effect(() => {
     if (!collider) return
-    const handle = collider.handle
+    const { handle } = collider
     ballRegistry.set(handle, despawn)
     return () => {
       ballRegistry.delete(handle)
@@ -66,11 +55,7 @@
   })
 </script>
 
-<!--
-  Balls live in group 1 and collide with the playfield (group 0) and with each
-  other (group 1) — that ball-on-ball "clack" is what makes pachinko feel
-  right, even though it's the most expensive bit of the simulation.
--->
+<!-- Balls live in group 1 and collide with the playfield (group 0) and with each other (group 1) -->
 <CollisionGroups
   memberships={[1]}
   filter={[0, 1]}

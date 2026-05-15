@@ -1,13 +1,7 @@
 <script lang="ts">
-  import { T } from '@threlte/core'
-  import { Collider, RigidBody } from '@threlte/rapier'
-  import {
-    FIELD_HEIGHT,
-    FIELD_WIDTH,
-    CHANNEL_X,
-    ballRegistry,
-    gameState
-  } from './gameState.svelte'
+  import { T, useTask } from '@threlte/core'
+  import { Attractor, Collider, RigidBody } from '@threlte/rapier'
+  import { FIELD_HEIGHT, FIELD_WIDTH, CHANNEL_X, ballRegistry, gameState } from './gameState.svelte'
 
   type PocketKind = 'low' | 'mid' | 'high' | 'jackpot'
 
@@ -17,6 +11,13 @@
     high: { color: '#ffaa55', value: 50 },
     jackpot: { color: '#ff3da6', value: 250 }
   }
+
+  // A weak attractor hovers above the jackpot pocket — a touch of rigged
+  // pachinko physics. Strength is per-frame impulse magnitude (≈ instant Δv),
+  // so even small numbers bias trajectories noticeably at 60Hz.
+  const JACKPOT_STRENGTH = 0.004
+  const JACKPOT_RANGE = 1.8
+  const JACKPOT_ORB_Y = 0.4 // height above the jackpot pocket plate
 
   // Pockets line the bottom of the playfield, left of the launch channel.
   const playfieldLeft = -FIELD_WIDTH / 2 + 0.2
@@ -46,11 +47,19 @@
       }
     }
   })
+
+  const jackpot = pockets.find((p) => p.kind === 'jackpot')!
+
+  // The orb above the jackpot pulses to telegraph the attractor.
+  let orbPulse = $state(0)
+  useTask((delta) => {
+    orbPulse = (orbPulse + delta * 2.4) % (Math.PI * 2)
+  })
 </script>
 
 <RigidBody type="fixed">
   <!-- Dividers between pockets -->
-  {#each pockets as pocket, i (i)}
+  {#each pockets as pocket, i (pocket)}
     {#if i > 0}
       <T.Group position={[pocket.x - slotWidth / 2, pocketY + 0.18, 0]}>
         <Collider
@@ -72,7 +81,7 @@
 
 <!-- Pocket sensors + glow plates. Sensors are free colliders (no parent
      RigidBody) — sensor events work the same either way. -->
-{#each pockets as pocket}
+{#each pockets as pocket (pocket)}
   <T.Group position={[pocket.x, pocketY, 0]}>
     <Collider
       shape="cuboid"
@@ -92,3 +101,30 @@
     </T.Mesh>
   </T.Group>
 {/each}
+
+<!-- Jackpot attractor — a soft gravity well sits just above the jackpot
+     pocket so balls drifting through the lower playfield get nudged toward
+     it. The orb is a pulsing visual telegraph; the Attractor is what does
+     the actual pulling. -->
+<T.Group position={[jackpot.x, pocketY + JACKPOT_ORB_Y, 0.1]}>
+  <Attractor
+    strength={JACKPOT_STRENGTH}
+    range={JACKPOT_RANGE}
+    gravityType="linear"
+  />
+  <T.Mesh scale={1 + 0.12 * Math.sin(orbPulse)}>
+    <T.IcosahedronGeometry args={[0.12, 0]} />
+    <T.MeshStandardMaterial
+      color={jackpot.color}
+      emissive={jackpot.color}
+      emissiveIntensity={2 + 0.7 * Math.sin(orbPulse)}
+      metalness={0.6}
+      roughness={0.2}
+    />
+  </T.Mesh>
+  <T.PointLight
+    color={jackpot.color}
+    intensity={2 + Math.sin(orbPulse)}
+    distance={1.4}
+  />
+</T.Group>

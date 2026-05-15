@@ -6,12 +6,7 @@
   let rail = $state<RapierRigidBody>()
   let platform = $state<RapierRigidBody>()
 
-  const { rigidBodyA, rigidBodyB } = usePrismaticJoint(
-    [0, 0, 0],
-    [0, 0, 0],
-    [0, 1, 0],
-    [-2.5, 2.5]
-  )
+  const { rigidBodyA, rigidBodyB } = usePrismaticJoint([0, 0, 0], [0, 0, 0], [0, 1, 0], [-2.5, 2.5])
 
   $effect(() => {
     if (rail && platform) {

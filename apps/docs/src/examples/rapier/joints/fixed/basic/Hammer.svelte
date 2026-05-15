@@ -21,7 +21,10 @@
   let head = $state<RapierRigidBody>()
 </script>
 
-<T.Group {position} {rotation}>
+<T.Group
+  {position}
+  {rotation}
+>
   <CollisionGroups
     memberships={[1]}
     filter={[0, 2]}

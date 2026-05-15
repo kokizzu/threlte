@@ -3,6 +3,15 @@
   import { Collider, RigidBody, useRevoluteJoint } from '@threlte/rapier'
   import type { BoxGeometry, CylinderGeometry, MeshStandardMaterial } from 'three'
 
+  interface Props {
+    position: [number, number, number]
+    initialAngularVelocity: number
+    barGeometry: BoxGeometry
+    barMaterial: MeshStandardMaterial
+    hubGeometry: CylinderGeometry
+    hubMaterial: MeshStandardMaterial
+  }
+
   let {
     position,
     initialAngularVelocity,
@@ -10,14 +19,7 @@
     barMaterial,
     hubGeometry,
     hubMaterial
-  }: {
-    position: [number, number, number]
-    initialAngularVelocity: number
-    barGeometry: BoxGeometry
-    barMaterial: MeshStandardMaterial
-    hubGeometry: CylinderGeometry
-    hubMaterial: MeshStandardMaterial
-  } = $props()
+  }: Props = $props()
 
   // anchorA / anchorB both [0,0,0]: both bodies sit at `position`, joint pivots
   // around their shared origin. axis [0,0,1] spins in the XY play plane.

@@ -3,11 +3,7 @@
   import Ball from './Ball.svelte'
   import { spawnQueue } from './spawnQueue.svelte'
 
-  // Store the per-ball tuples on the instance so the array references stay
-  // stable across renders. Each spawn re-runs this {#each}, and any existing
-  // Ball that sees a new array literal as a prop would have its launch-time
-  // $effects (setLinvel, mesh position) rerun against fresh references.
-  type BallInstance = {
+  interface BallInstance {
     id: number
     position: [number, number, number]
     linearVelocity: [number, number, number]

@@ -23,13 +23,13 @@
 <script lang="ts">
   import { BoxGeometry, CylinderGeometry, MeshStandardMaterial } from 'three'
   import Windmill from './Windmill.svelte'
-  import { WINDMILLS } from './gameState.svelte'
+  import { windmills } from './gameState.svelte'
 </script>
 
-{#each WINDMILLS as w}
+{#each windmills as windmill (windmill)}
   <Windmill
-    position={w.position}
-    initialAngularVelocity={w.spin}
+    position={windmill.position}
+    initialAngularVelocity={windmill.spin}
     {barGeometry}
     {barMaterial}
     {hubGeometry}
