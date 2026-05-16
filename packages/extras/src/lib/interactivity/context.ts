@@ -2,7 +2,7 @@ import { currentWritable, useDOM, type CurrentWritable } from '@threlte/core'
 import { getContext, setContext } from 'svelte'
 import { Raycaster, Vector2, type Intersection, type Object3D } from 'three'
 import { getDefaultComputeFunction } from './defaults.svelte.js'
-import type { DomEvent, DomEventName, IntersectionEvent } from './types.js'
+import type { DomEvent, DomEventName, EventOptions, IntersectionEvent } from './types.js'
 
 export type FilterFunction = (
   items: Intersection[],
@@ -44,6 +44,10 @@ export type InteractivityOptions = {
    * the plugin will not add a listener for the event.
    */
   disabledEvents?: DomEventName[]
+  /* 
+    Optionally configure `passive` option for specified events.
+  */
+  eventOptions?: EventOptions
 }
 
 type Events = Record<string, (arg: unknown) => void>
@@ -66,6 +70,7 @@ export type InteractivityContext = {
   clickDistanceThreshold: number
   clickTimeThreshold: number
   disabledEvents?: DomEventName[]
+  eventOptions?: EventOptions
   addInteractiveObject: (object: Object3D, events: Events) => void
   removeInteractiveObject: (object: Object3D) => void
 }
@@ -97,6 +102,7 @@ export const setInteractivityContext = (options?: InteractivityOptions) => {
     clickDistanceThreshold: options?.clickDistanceThreshold ?? 8,
     clickTimeThreshold: options?.clickTimeThreshold ?? Number.POSITIVE_INFINITY,
     disabledEvents: options?.disabledEvents,
+    eventOptions: options?.eventOptions,
     addInteractiveObject: (object: Object3D, events: Events) => {
       // Always update handlers so re-registration picks up new callbacks,
       // even if the object is already in the list.

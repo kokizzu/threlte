@@ -65,3 +65,5 @@ export type DomEventName =
   | 'pointerenter'
   | 'pointermove'
   | 'pointercancel'
+
+export type EventOptions = Partial<Record<DomEventName, { passive?: boolean }>>
