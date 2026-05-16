@@ -41,7 +41,7 @@ export type InteractivityOptions = {
   /**
    * Optionally disable listening to certain events.
    * When an event name is included in this array,
-   * the plugin will not add a listener for the event.
+   * its respective listener will not be added.
    */
   disabledEvents?: DomEventName[]
   /* 
