@@ -64,7 +64,7 @@ export type InteractivityContext = {
   filter?: FilterFunction | undefined
   clickDistanceThreshold: number
   clickTimeThreshold: number
-  eventOptions?: EventOptions
+  eventOptions: EventOptions | undefined
   addInteractiveObject: (object: Object3D, events: Events) => void
   removeInteractiveObject: (object: Object3D) => void
 }
