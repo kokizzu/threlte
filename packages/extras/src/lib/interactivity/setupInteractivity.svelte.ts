@@ -295,7 +295,7 @@ export const setupInteractivity = (context: InteractivityContext) => {
 
   const disconnect = (target: HTMLElement) => {
     for (const [eventName] of DOM_EVENTS) {
-      if (context.disabledEvents?.includes(eventName)) continue
+      if (context.eventOptions?.[eventName]?.enabled === false) continue
 
       if (eventName === 'pointerleave' || eventName === 'pointercancel') {
         target.removeEventListener(eventName, handlePointerLeaveOrCancel)
@@ -311,7 +311,7 @@ export const setupInteractivity = (context: InteractivityContext) => {
 
   const connect = (target: HTMLElement) => {
     for (const [eventName, defaultPassive] of DOM_EVENTS) {
-      if (context.disabledEvents?.includes(eventName)) continue
+      if (context.eventOptions?.[eventName]?.enabled === false) continue
 
       const passive = context.eventOptions?.[eventName]?.passive ?? defaultPassive
 

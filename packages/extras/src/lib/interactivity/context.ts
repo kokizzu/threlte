@@ -2,7 +2,7 @@ import { currentWritable, useDOM, type CurrentWritable } from '@threlte/core'
 import { getContext, setContext } from 'svelte'
 import { Raycaster, Vector2, type Intersection, type Object3D } from 'three'
 import { getDefaultComputeFunction } from './defaults.svelte.js'
-import type { DomEvent, DomEventName, EventOptions, IntersectionEvent } from './types.js'
+import type { DomEvent, EventOptions, IntersectionEvent } from './types.js'
 
 export type FilterFunction = (
   items: Intersection[],
@@ -38,14 +38,9 @@ export type InteractivityOptions = {
    * matching native DOM behavior.
    */
   clickTimeThreshold?: number
-  /**
-   * Optionally disable listening to certain events.
-   * When an event name is included in this array,
-   * its respective listener will not be added.
-   */
-  disabledEvents?: DomEventName[]
   /* 
-    Optionally configure `passive` option for specified events.
+    Optionally configure `passive` and `enabled` options for specified events.
+    Specifying `enabled: false` for an event will prevent its respective listener from being added.
   */
   eventOptions?: EventOptions
 }
@@ -69,7 +64,6 @@ export type InteractivityContext = {
   filter?: FilterFunction | undefined
   clickDistanceThreshold: number
   clickTimeThreshold: number
-  disabledEvents?: DomEventName[]
   eventOptions?: EventOptions
   addInteractiveObject: (object: Object3D, events: Events) => void
   removeInteractiveObject: (object: Object3D) => void
@@ -101,7 +95,6 @@ export const setInteractivityContext = (options?: InteractivityOptions) => {
     filter: options?.filter,
     clickDistanceThreshold: options?.clickDistanceThreshold ?? 8,
     clickTimeThreshold: options?.clickTimeThreshold ?? Number.POSITIVE_INFINITY,
-    disabledEvents: options?.disabledEvents,
     eventOptions: options?.eventOptions,
     addInteractiveObject: (object: Object3D, events: Events) => {
       // Always update handlers so re-registration picks up new callbacks,
