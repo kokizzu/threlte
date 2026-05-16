@@ -216,6 +216,23 @@ You can filter and sort events by passing a `filter` to the `interactivity` plug
 </script>
 ```
 
+## Event options
+
+Certain configuration options are available for DOM events via `eventOptions`. Setting `enabled: false` for a specified event will prevent its respective listener from being added.
+
+```svelte title="Scene.svelte"
+<script>
+  import { interactivity } from '@threlte/extras'
+
+  interactivity({
+    eventOptions: {
+      wheel: { passive: true },
+      click: { enabled: false }
+    }
+  })
+</script>
+```
+
 ## Interactivity state
 
 To access the interactivity state, you can use the `useInteractivity` hook in any child component of the component that implements the `interactivity` plugin as follows:
@@ -248,6 +265,7 @@ export type State = {
   filter?: FilterFunction
   clickDistanceThreshold: number
   clickTimeThreshold: number
+  eventOptions?: EventOptions
 }
 ```
 
