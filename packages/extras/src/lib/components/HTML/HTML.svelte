@@ -92,10 +92,13 @@
   let oldZoom = 0
   let oldX = 0
   let oldY = 0
-  let cachedZIndex = ''
+  let cachedZIndexNum = Number.MIN_SAFE_INTEGER
   let cachedWidth = -1
   let cachedHeight = -1
   let cachedPerspective = ''
+  let cachedOuterTransform = ''
+  let cachedInnerTransform = ''
+  let cachedTransform = ''
   let transformOuterRef: HTMLDivElement | undefined = $state()
   let transformInnerRef: HTMLDivElement | undefined = $state()
   let isMeshSizeSet = false
@@ -108,11 +111,18 @@
   const isRayCastOcclusion = $derived(!!occlude && occlude !== 'blending')
   const viewportFactor = $derived(getViewportFactor($camera, viewportTarget, $size))
 
+  // Stable zRange tuple — objectZIndex only reads zRange[0] and zRange[1].
+  // Recomputes only when occlude/raycast/zIndexRange actually change.
+  const zRange = $derived.by(() => {
+    if (!occlude) return zIndexRange
+    const halfRange = Math.floor(zIndexRange[0] / 2)
+    return isRayCastOcclusion ? [zIndexRange[0], halfRange] : [halfRange - 1, 0]
+  })
+
   $effect.pre(() => {
-    if (occlude === 'blending') {
-      activeOccludeInstances += 1
-      modifyCanvas(canvas, zIndexRange[0])
-    }
+    if (occlude !== 'blending') return
+    activeOccludeInstances += 1
+    modifyCanvas(canvas, zIndexRange[0])
 
     return () => {
       activeOccludeInstances -= 1
@@ -160,17 +170,14 @@
         }
       }
 
-      const halfRange = Math.floor(zIndexRange[0] / 2)
-      const zRange = occlude
-        ? isRayCastOcclusion //
-          ? [zIndexRange[0], halfRange]
-          : [halfRange - 1, 0]
-        : zIndexRange
-
-      const zIndexValue = `${objectZIndex(group, camera.current as OrthographicCamera | PerspectiveCamera, zRange)}`
-      if (cachedZIndex !== zIndexValue) {
-        element.style.zIndex = zIndexValue
-        cachedZIndex = zIndexValue
+      const zIndexNum = objectZIndex(
+        group,
+        camera.current as OrthographicCamera | PerspectiveCamera,
+        zRange
+      )
+      if (cachedZIndexNum !== zIndexNum) {
+        element.style.zIndex = `${zIndexNum}`
+        cachedZIndexNum = zIndexNum
       }
 
       if (transform && transformOuterRef && transformInnerRef) {
@@ -212,15 +219,24 @@
           element.style.perspective = perspective
           cachedPerspective = perspective
         }
-        transformOuterRef.style.transform = `${cameraTransform}${cameraMatrix}translate(${halfWidth}px,${halfHeight}px)`
-        transformInnerRef.style.transform = getObjectCSSMatrix(
-          matrix,
-          1 / ((distanceFactor || 10) / 400)
-        )
+        const newOuterTransform = `${cameraTransform}${cameraMatrix}translate(${halfWidth}px,${halfHeight}px)`
+        if (cachedOuterTransform !== newOuterTransform) {
+          transformOuterRef.style.transform = newOuterTransform
+          cachedOuterTransform = newOuterTransform
+        }
+        const newInnerTransform = getObjectCSSMatrix(matrix, 1 / ((distanceFactor || 10) / 400))
+        if (cachedInnerTransform !== newInnerTransform) {
+          transformInnerRef.style.transform = newInnerTransform
+          cachedInnerTransform = newInnerTransform
+        }
       } else if (vec) {
         const scale =
           distanceFactor === undefined ? 1 : objectScale(group, camera.current) * distanceFactor
-        element.style.transform = `translate3d(${vec[0]}px,${vec[1]}px,0) scale(${scale})`
+        const newTransform = `translate3d(${vec[0]}px,${vec[1]}px,0) scale(${scale})`
+        if (cachedTransform !== newTransform) {
+          element.style.transform = newTransform
+          cachedTransform = newTransform
+        }
       }
 
       if (vec) {

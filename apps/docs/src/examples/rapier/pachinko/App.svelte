@@ -36,6 +36,7 @@
      `position: fixed` and rendered outside this wrapper, so touches on it
      never bubble here and don't accidentally charge. -->
 <div
+  aria-hidden="true"
   onpointerdown={(event) => {
     if (event.button !== 0 || !event.isPrimary) return
     event.currentTarget.setPointerCapture(event.pointerId)
