@@ -39,8 +39,7 @@ export type InteractivityOptions = {
    */
   clickTimeThreshold?: number
   /* 
-    Optionally configure `passive` and `enabled` options for specified events.
-    Specifying `enabled: false` for an event will prevent its respective listener from being added.
+    Optionally configure `passive` options for specified events.
   */
   eventOptions?: EventOptions
 }
