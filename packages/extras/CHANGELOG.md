@@ -1,5 +1,11 @@
 # @threlte/extras
 
+## 9.19.0
+
+### Minor Changes
+
+- b6e29a7: Add eventOptions option to interactivity plugin
+
 ## 9.18.0
 
 ### Minor Changes
