@@ -20,6 +20,7 @@
 
   let {
     isBackground = false,
+    isEnvironment = true,
     scene = ctx.scene,
     texture = $bindable(),
     urls
@@ -31,7 +32,8 @@
   useEnvironment(
     () => scene,
     () => texture,
-    () => isBackground
+    () => isBackground,
+    () => isEnvironment
   )
 
   const first = $derived(urls?.[0])
