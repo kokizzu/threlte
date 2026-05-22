@@ -26,6 +26,12 @@ export interface VirtualEnvironmentProps {
   isBackground?: boolean
 
   /**
+   * Whether to set the `scene`'s environment to the virtual environment
+   * @default true
+   */
+  isEnvironment?: boolean
+
+  /**
    * Passed along to the internal CubeCamera
    * @default 1000
    */
