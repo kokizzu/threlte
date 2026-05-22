@@ -1,5 +1,12 @@
 # @threlte/extras
 
+## 9.20.0
+
+### Minor Changes
+
+- f605bfe: Add `isEnvironment` to environment components so textures can be assigned as a background without replacing `scene.environment`.
+- f605bfe: View: allow same scene rendering
+
 ## 9.19.0
 
 ### Minor Changes
