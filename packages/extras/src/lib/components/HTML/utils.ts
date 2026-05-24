@@ -75,7 +75,7 @@ export const objectZIndex = (
   el: Object3D,
   camera: OrthographicCamera | PerspectiveCamera,
   zIndexRange: Array<number>
-): number | undefined => {
+): number => {
   const objectPos = v1.setFromMatrixPosition(el.matrixWorld)
   const cameraPos = v2.setFromMatrixPosition(camera.matrixWorld)
   const dist = objectPos.distanceTo(cameraPos)
