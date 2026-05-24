@@ -4,7 +4,8 @@ import type { Scene } from 'three'
 export const useEnvironment = (
   scene: () => Scene,
   environment: () => Scene['environment'] | undefined,
-  isBackground: () => boolean
+  isBackground: () => boolean,
+  isEnvironment: () => boolean
 ) => {
   const { invalidate } = useThrelte()
 
@@ -15,8 +16,11 @@ export const useEnvironment = (
     const currentScene = scene()
     const { background: lastBackground, environment: lastEnvironment } = currentScene
     const currentIsBackground = isBackground()
+    const currentIsEnvironment = isEnvironment()
 
-    currentScene.environment = currentEnvironment
+    if (currentIsEnvironment) {
+      currentScene.environment = currentEnvironment
+    }
 
     if (currentIsBackground) {
       currentScene.background = currentEnvironment
@@ -25,7 +29,9 @@ export const useEnvironment = (
     invalidate()
 
     return () => {
-      currentScene.environment = lastEnvironment
+      if (currentIsEnvironment) {
+        currentScene.environment = lastEnvironment
+      }
 
       if (currentIsBackground) {
         currentScene.background = lastBackground

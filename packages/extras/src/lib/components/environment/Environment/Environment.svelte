@@ -26,6 +26,7 @@
     texture = $bindable(),
     ground = false,
     isBackground = false,
+    isEnvironment = true,
     scene = ctx.scene,
     url
   }: EquirectangularEnvironmentProps = $props()
@@ -37,7 +38,8 @@
   useEnvironment(
     () => scene,
     () => texture,
-    () => isBackground
+    () => isBackground,
+    () => isEnvironment
   )
 
   const isEXR = $derived(url?.endsWith('exr') ?? false)

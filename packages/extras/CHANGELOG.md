@@ -1,5 +1,24 @@
 # @threlte/extras
 
+## 9.20.0
+
+### Minor Changes
+
+- f605bfe: Add `isEnvironment` to environment components so textures can be assigned as a background without replacing `scene.environment`.
+- f605bfe: View: allow same scene rendering
+
+## 9.19.0
+
+### Minor Changes
+
+- b6e29a7: Add eventOptions option to interactivity plugin
+
+## 9.18.0
+
+### Minor Changes
+
+- cb711f6: Add Wobble component
+
 ## 9.17.1
 
 ### Patch Changes

@@ -10,6 +10,7 @@
     far = 1000,
     frames = Infinity,
     isBackground = false,
+    isEnvironment = true,
     near = 0.1,
     onupdatestart,
     onupdatestop,
@@ -31,7 +32,8 @@
   useEnvironment(
     () => parentScene,
     () => renderTarget.texture,
-    () => isBackground
+    () => isBackground,
+    () => isEnvironment
   )
 
   export const update = () => {

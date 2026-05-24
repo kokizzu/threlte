@@ -11,6 +11,12 @@ export interface CommonEnvironmentProps<T extends Texture> {
   isBackground?: boolean
 
   /**
+   * Whether to set the `scene`'s environment to the loaded environment
+   * @default true
+   */
+  isEnvironment?: boolean
+
+  /**
    * The scene to apply the environment to
    * @default useThrelte().scene
    */

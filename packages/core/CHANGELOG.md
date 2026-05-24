@@ -1,5 +1,12 @@
 # @threlte/core
 
+## 8.5.15
+
+### Patch Changes
+
+- f605bfe: Fix infinite effect loop when using bind:ref
+- f605bfe: Fix: A manual makeDefault camera could leave Threlte’s active camera state stuck in manual mode after it was disabled or unmounted
+
 ## 8.5.14
 
 ### Patch Changes
