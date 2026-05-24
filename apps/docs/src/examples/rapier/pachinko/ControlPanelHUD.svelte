@@ -28,7 +28,7 @@
   position={[0, CONTROL_PANEL_Y, 0]}
   rotation={[CONTROL_PANEL_TILT, 0, 0]}
 >
-  <!-- Score card — left side of the panel -->
+  <!-- Score card -->
   <HTML
     transform
     position={[-panelHalfW + 1.7, panelCenterY, cardZ]}
@@ -49,7 +49,7 @@
     </div>
   </HTML>
 
-  <!-- Power meter — right side of the panel -->
+  <!-- Power meter -->
   <HTML
     transform
     position={[panelHalfW - 1.9, panelCenterY, cardZ]}

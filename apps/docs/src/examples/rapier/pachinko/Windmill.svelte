@@ -40,22 +40,20 @@
     />
   </RigidBody>
 
-  <!-- Spinning bar — light + low-damping so a ball hit imparts real spin
-       rather than a stiff nudge. The revolute joint already pins translation;
-       we still lock all axes on the body itself as belt-and-suspenders. -->
+  <!-- Spinning bar -->
   <RigidBody
     type="dynamic"
     bind:rigidBody={$rigidBodyB}
     angularVelocity={[0, 0, initialAngularVelocity]}
     enabledTranslations={[false, false, false]}
     enabledRotations={[false, false, true]}
-    angularDamping={0.05}
+    angularDamping={0.01}
   >
     <Collider
       shape="cuboid"
       args={[0.45, 0.035, 0.12]}
-      restitution={0.7}
-      friction={0.05}
+      restitution={0.1}
+      friction={0.01}
       density={1}
     />
     <T.Mesh

@@ -2,8 +2,6 @@
   lang="ts"
   module
 >
-  // Shared between every cabinet panel so the look stays consistent and the
-  // material is only constructed once.
   const cabinetMaterial = new MeshStandardMaterial({
     color: '#1f1530',
     metalness: 0.55,
@@ -36,7 +34,7 @@
   const rail = SIDE_RAIL_WIDTH
 </script>
 
-<!-- Top crown — slab above the playfield, ready for a marquee. -->
+<!-- Slab above the playfield -->
 <T.Group position={[0, CROWN_Y, 0]}>
   <T.Mesh
     castShadow
@@ -55,7 +53,7 @@
   </T.Mesh>
 </T.Group>
 
-<!-- Side rails — vertical pillars flanking the playfield. -->
+<!-- Side rails-->
 {#each [-1, 1] as side (side)}
   <T.Group position={[side * (halfCabinetW - rail / 2), 0, 0]}>
     <T.Mesh
@@ -76,7 +74,7 @@
   </T.Group>
 {/each}
 
-<!-- Control panel — tilted forward toward the camera, hosts the HUD. -->
+<!-- Control panel -->
 <T.Group
   position={[0, CONTROL_PANEL_Y, 0]}
   rotation={[CONTROL_PANEL_TILT, 0, 0]}

@@ -12,14 +12,11 @@
     jackpot: { color: '#ff3da6', value: 250 }
   }
 
-  // A weak attractor hovers above the jackpot pocket — a touch of rigged
-  // pachinko physics. Strength is per-frame impulse magnitude (≈ instant Δv),
-  // so even small numbers bias trajectories noticeably at 60Hz.
+  // A weak attractor hovers above the jackpot pocket — a touch of rigged pachinko physics.
   const JACKPOT_STRENGTH = 0.004
   const JACKPOT_RANGE = 1.8
-  const JACKPOT_ORB_Y = 0.4 // height above the jackpot pocket plate
+  const JACKPOT_ORB_Y = 0.4
 
-  // Pockets line the bottom of the playfield, left of the launch channel.
   const playfieldLeft = -FIELD_WIDTH / 2 + 0.2
   const playfieldRight = CHANNEL_X - 0.5
   const pocketY = -FIELD_HEIGHT / 2 + 0.5
@@ -28,10 +25,6 @@
   const slotWidth = playfieldSpan / layout.length
   const pocketHalfW = slotWidth / 2 - 0.05
 
-  // Build each pocket's data and its sensor handler up front. The handler
-  // closes over the pocket's kind/value, and exporting it as a stable property
-  // on the array element keeps Collider's onsensorenter prop reference stable
-  // across re-renders (would otherwise destroy and re-create the collider).
   const pockets = layout.map((kind, i) => {
     const spec = POCKET_SPECS[kind]
     return {
@@ -50,7 +43,6 @@
 
   const jackpot = pockets.find((p) => p.kind === 'jackpot')!
 
-  // The orb above the jackpot pulses to telegraph the attractor.
   let orbPulse = $state(0)
   useTask((delta) => {
     orbPulse = (orbPulse + delta * 2.4) % (Math.PI * 2)
@@ -79,8 +71,7 @@
   {/each}
 </RigidBody>
 
-<!-- Pocket sensors + glow plates. Sensors are free colliders (no parent
-     RigidBody) — sensor events work the same either way. -->
+<!-- Pocket sensors + glow plates.-->
 {#each pockets as pocket (pocket)}
   <T.Group position={[pocket.x, pocketY, 0]}>
     <Collider
@@ -102,10 +93,7 @@
   </T.Group>
 {/each}
 
-<!-- Jackpot attractor — a soft gravity well sits just above the jackpot
-     pocket so balls drifting through the lower playfield get nudged toward
-     it. The orb is a pulsing visual telegraph; the Attractor is what does
-     the actual pulling. -->
+<!-- Jackpot attractor -->
 <T.Group position={[jackpot.x, pocketY + JACKPOT_ORB_Y, 0.1]}>
   <Attractor
     strength={JACKPOT_STRENGTH}

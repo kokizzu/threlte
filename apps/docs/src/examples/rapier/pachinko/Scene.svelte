@@ -15,15 +15,6 @@
   let { debug }: { debug: boolean } = $props()
 </script>
 
-<!-- Camera direction is what we care about — the 3/4 angle. <Bounds> below
-     adjusts the camera distance to fit its children at any viewport size,
-     so this position is just a starting orientation. -->
-<T.PerspectiveCamera
-  makeDefault
-  fov={40}
-  position={[3, 0, 18]}
-/>
-
 <SoftShadows />
 
 <T.DirectionalLight
@@ -43,6 +34,13 @@
   intensity={20}
   color="#ff4488"
   distance={12}
+/>
+
+<!-- Starting orientation. -->
+<T.PerspectiveCamera
+  makeDefault
+  fov={40}
+  position={[3, 0, 18]}
 />
 
 <Bounds

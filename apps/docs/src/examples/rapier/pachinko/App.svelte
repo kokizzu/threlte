@@ -31,10 +31,6 @@
   }}
 />
 
-<!-- Pointer events mirror the spacebar so a touch on mobile (or a mouse hold
-     on desktop) charges + releases the launcher the same way. The Pane is
-     `position: fixed` and rendered outside this wrapper, so touches on it
-     never bubble here and don't accidentally charge. -->
 <div
   aria-hidden="true"
   onpointerdown={(event) => {
@@ -63,8 +59,10 @@
     position: relative;
     height: 100%;
     background: radial-gradient(ellipse at center, #1a1530 0%, #0a0814 70%);
+
     /* Block touch-scrolling / double-tap zoom so a hold actually holds. */
     touch-action: none;
+
     /* iOS Safari treats a long press as "select text" or shows a callout
        menu — kill both so press-and-hold reliably charges the launcher. */
     user-select: none;

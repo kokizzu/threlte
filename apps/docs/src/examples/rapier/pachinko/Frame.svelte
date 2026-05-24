@@ -9,7 +9,7 @@
   const halfH = FIELD_HEIGHT / 2
 </script>
 
-<!-- Backboard (visual + physical wall behind playfield to keep balls in plane) -->
+<!-- Backboard -->
 <T.Mesh
   position={[0, 0, -0.18]}
   receiveShadow
@@ -71,8 +71,7 @@
     </T.Mesh>
   </T.Group>
 
-  <!-- Floor — runs all the way across (including under the channel) so balls
-       can't escape out the bottom. Pocket sensors sit slightly above this. -->
+  <!-- Floor -->
   <T.Group position={[0, -halfH, 0]}>
     <Collider
       shape="cuboid"
@@ -88,9 +87,7 @@
     </T.Mesh>
   </T.Group>
 
-  <!-- Launch channel inner wall — spans the channel height so balls travelling
-       up are constrained inside the right channel until they clear the top,
-       where the deflector kicks them leftward into the field. -->
+  <!-- Launch channel inner wall -->
   {@const channelWallLen = (CHANNEL_TOP_Y - CHANNEL_BOTTOM_Y) / 2}
   {@const channelWallCenterY = (CHANNEL_TOP_Y + CHANNEL_BOTTOM_Y) / 2}
 
@@ -109,7 +106,7 @@
     </T.Mesh>
   </T.Group>
 
-  <!-- Channel-top deflector — angled wall that pushes balls leftward into the field. -->
+  <!-- Channel-top angled wall -->
   <T.Group
     position={[halfW - 0.9, CHANNEL_TOP_Y + 1.5, 0]}
     rotation={[0, 0, -Math.PI / 4]}

@@ -12,27 +12,13 @@
   } from './gameState.svelte'
   import { spawnQueue } from './spawnQueue.svelte'
 
-  // How long (ms) a full hold-to-charge takes. Past this the launcher enters
-  // auto-fire mode and oscillates on its own until the user releases.
   const CHARGE_TIME_MS = 1000
   const AUTOFIRE_INTERVAL_MS = 140
-
-  // The anchor sits at the bottom of the launcher; the plunger rides above it
-  // on a prismatic joint. Motor target is the distance along +Y the plunger
-  // sits above the anchor: 0 → fully compressed, REST_OFFSET → at rest.
   const ANCHOR_Y = -FIELD_HEIGHT / 2 + 0.2
   const REST_OFFSET = 0.6
   const COMPRESSED_OFFSET = 0
-
-  // Spring tuning. Critical damping ≈ 2·sqrt(k·m); we want underdamped so the
-  // plunger reaches REST_OFFSET with significant velocity left over to launch
-  // the ball. With a density-50 plunger (m≈0.27kg) and k=4000, critical damping
-  // is ~65 — we pick a small fraction of that for a hard snap.
   const SPRING_STIFFNESS = 4000
   const SPRING_DAMPING = 3
-
-  // Where the loaded ball sits above the top of the plunger head before it
-  // gets launched. (Plunger half-height + ball radius + a small gap.)
   const PLUNGER_HALF_HEIGHT = 0.08
   const BALL_RADIUS = 0.14
   const LOAD_GAP = 0.04
@@ -48,16 +34,7 @@
 
   let configured = false
   let lastAutoFire = 0
-
-  // Count of balls currently inside the launch-zone sensor. loadBall() refuses
-  // to spawn another while any ball is still in the channel, preventing
-  // pile-ups when auto-fire outruns a launch.
   let ballsInLaunchZone = 0
-
-  // Local debounce — the sensor's `enter` event doesn't fire on the same
-  // physics tick as the spawn, so without this guard multiple loadBall()
-  // calls in quick succession (e.g. several physics substeps inside one
-  // charging frame) could each see `ballsInLaunchZone === 0` and spawn.
   let lastSpawnAt = 0
 
   const SPAWN_DEBOUNCE_MS = 80
@@ -126,9 +103,7 @@
   const sensorHalfHeight = (CHANNEL_TOP_Y - CHANNEL_BOTTOM_Y) / 2
 </script>
 
-<!-- Anchor (fixed) — invisible joint root at the bottom of the launcher.
-     Centered on CHANNEL_X so the plunger sits inside the channel without
-     clipping the outer wall. -->
+<!-- Anchor — invisible joint root at the bottom of the launcher. -->
 <T.Group position={[CHANNEL_X, ANCHOR_Y, 0]}>
   <RigidBody
     type="fixed"
@@ -145,8 +120,7 @@
   </RigidBody>
 </T.Group>
 
-<!-- Plunger (dynamic) — starts at REST_OFFSET above the anchor; the prismatic
-     joint + motor keep it sliding along Y between COMPRESSED and REST. -->
+<!-- Plunger -->
 <T.Group position={[CHANNEL_X, ANCHOR_Y + REST_OFFSET, 0]}>
   <RigidBody
     type="dynamic"
@@ -176,10 +150,7 @@
   </RigidBody>
 </T.Group>
 
-<!-- Launch-zone sensor — spans the entire inside of the channel, from just
-     above the anchor up to the deflector. Any ball anywhere in the channel
-     blocks new loads, preventing pile-ups. Filtered via ballRegistry so the
-     plunger (also inside this zone) doesn't bump the count. -->
+<!-- Launch-zone sensor -->
 <T.Group position={[CHANNEL_X, sensorCenterY, 0]}>
   <Collider
     shape="cuboid"
