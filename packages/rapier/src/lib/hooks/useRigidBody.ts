@@ -6,14 +6,15 @@ export type RigidBodyContext = ThrelteRigidBody & { current: ThrelteRigidBody | 
 const key = Symbol('threlte-rapier-rigidbody')
 
 export const provideRigidbody = (rigidBody: () => ThrelteRigidBody) => {
-  setContext(
-    key,
-    Object.assign(rigidBody(), {
-      get current() {
-        return rigidBody()
-      }
-    })
-  )
+  const rb = rigidBody()
+
+  Object.defineProperty(rb, 'current', {
+    get() {
+      return rigidBody()
+    }
+  })
+
+  setContext(key, rb)
 }
 
 export const useRigidBody = (): RigidBodyContext => {

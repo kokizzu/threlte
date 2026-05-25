@@ -19,7 +19,7 @@ export const scaleColliderArgs = <Shape extends ColliderShapes>(
   args: Parameters<(typeof ColliderDesc)[Shape]>,
   scale: Vector3
 ): Parameters<(typeof ColliderDesc)[Shape]> => {
-  if (scale.lengthSq() === 1) {
+  if (scale.x === 1 && scale.y === 1 && scale.z === 1) {
     return args
   }
 

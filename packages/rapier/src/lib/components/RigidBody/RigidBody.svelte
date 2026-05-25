@@ -135,18 +135,21 @@
    * Add userData to the rigidBody
    */
   $effect(() => {
+    const events = {
+      oncollisionenter,
+      oncollisionexit,
+      oncontact,
+      onsensorenter,
+      onsensorexit,
+      onsleep,
+      onwake
+    }
+
     rigidBodyInternal.userData = {
-      events: {
-        oncollisionenter,
-        oncollisionexit,
-        oncontact,
-        onsensorenter,
-        onsensorexit,
-        onsleep,
-        onwake
-      },
+      events,
       ...userData
     }
+    addRigidBodyToContext(rigidBodyInternal, object, events)
   })
 
   /**
@@ -161,19 +164,11 @@
   setParentRigidbodyObject(() => object)
 
   $effect(() => {
-    addRigidBodyToContext(rigidBodyInternal, object, {
-      oncollisionenter,
-      oncollisionexit,
-      oncontact,
-      onsensorenter,
-      onsensorexit,
-      onsleep,
-      onwake
-    })
+    const currentRigidBody = rigidBodyInternal
 
     return () => {
-      removeRigidBodyFromContext(rigidBodyInternal)
-      world.removeRigidBody(rigidBodyInternal)
+      removeRigidBodyFromContext(currentRigidBody)
+      world.removeRigidBody(currentRigidBody)
     }
   })
 
