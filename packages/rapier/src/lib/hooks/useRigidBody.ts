@@ -1,24 +1,39 @@
 import { getContext, setContext } from 'svelte'
-import type { ThrelteRigidBody } from '../types/types.js'
+import type { RigidBodyEvents, ThrelteRigidBody } from '../types/types.js'
 
-export type RigidBodyContext = ThrelteRigidBody & { current: ThrelteRigidBody | undefined }
+export interface RigidBodyContext {
+  current: ThrelteRigidBody | undefined
+  events: RigidBodyEvents
+}
 
 const key = Symbol('threlte-rapier-rigidbody')
 
-export const provideRigidbody = (rigidBody: () => ThrelteRigidBody) => {
-  const rb = rigidBody()
-
-  Object.defineProperty(rb, 'current', {
-    get() {
+export const provideRigidbody = (
+  rigidBody: () => ThrelteRigidBody,
+  events: () => RigidBodyEvents
+) => {
+  const context: RigidBodyContext = {
+    get current() {
       return rigidBody()
+    },
+    get events() {
+      return events()
     }
-  })
+  }
 
-  setContext(key, rb)
+  setContext<RigidBodyContext>(key, context)
 }
 
 export const useRigidBody = (): RigidBodyContext => {
   const context = getContext<RigidBodyContext>(key)
 
-  return context ?? { current: undefined }
+  return context ?? { current: undefined, events: {} }
+}
+
+// Will be removed in Threlte 9
+
+export const useRigidBody_deprecated = () => {
+  const context = getContext<RigidBodyContext>(key)
+
+  return context?.current
 }

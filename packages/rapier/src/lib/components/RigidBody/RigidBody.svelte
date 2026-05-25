@@ -131,24 +131,25 @@
   $effect(() => rigidBodyInternal.setLinearDamping(linearDamping))
   $effect(() => rigidBodyInternal.setEnabled(enabled))
 
+  const events = $derived({
+    oncollisionenter,
+    oncollisionexit,
+    oncontact,
+    onsensorenter,
+    onsensorexit,
+    onsleep,
+    onwake
+  })
+
   /**
    * Add userData to the rigidBody
    */
   $effect(() => {
-    const events = {
-      oncollisionenter,
-      oncollisionexit,
-      oncontact,
-      onsensorenter,
-      onsensorexit,
-      onsleep,
-      onwake
-    }
-
     rigidBodyInternal.userData = {
       events,
       ...userData
     }
+
     addRigidBodyToContext(rigidBodyInternal, object, events)
   })
 
@@ -156,7 +157,10 @@
    * Setting the RigidBody context so that colliders can
    * hook onto.
    */
-  provideRigidbody(() => rigidBodyInternal)
+  provideRigidbody(
+    () => rigidBodyInternal,
+    () => events
+  )
 
   /**
    * Used by child colliders to restore transform

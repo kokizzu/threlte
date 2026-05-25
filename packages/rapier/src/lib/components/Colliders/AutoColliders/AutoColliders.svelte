@@ -47,6 +47,14 @@
 
   const collisionGroups = useCollisionGroups()
 
+  const events = $derived({
+    oncollisionenter,
+    oncollisionexit,
+    oncontact,
+    onsensorenter,
+    onsensorexit
+  })
+
   const cleanup = () => {
     if (colliders === undefined) return
 
@@ -61,14 +69,6 @@
   const create = () => {
     cleanup()
 
-    const events = {
-      oncollisionenter,
-      oncollisionexit,
-      oncontact,
-      onsensorenter,
-      onsensorexit
-    }
-
     colliders = createCollidersFromChildren(
       group,
       shape ?? 'convexHull',
@@ -81,7 +81,7 @@
     collisionGroups.registerColliders(colliders)
 
     for (const collider of colliders) {
-      applyColliderActiveEvents(collider, events, rigidBody?.userData?.events)
+      applyColliderActiveEvents(collider, events, rigidBody.events)
       collider.setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       collider.setRestitution(restitution ?? 0)
       collider.setRestitutionCombineRule(restitutionCombineRule ?? CoefficientCombineRule.Average)
@@ -110,6 +110,17 @@
       }
     }
   }
+
+  $effect(() => {
+    if (!colliders) return
+
+    const rigidBodyEvents = rigidBody.events
+
+    for (const collider of colliders) {
+      addColliderToContext(collider, group, events)
+      applyColliderActiveEvents(collider, events, rigidBodyEvents)
+    }
+  })
 
   /**
    * Refresh the colliders.

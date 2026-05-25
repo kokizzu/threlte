@@ -55,6 +55,14 @@
 
   const collisionGroups = useCollisionGroups()
 
+  const events = $derived({
+    oncollisionenter,
+    oncollisionexit,
+    oncontact,
+    onsensorenter,
+    onsensorexit
+  })
+
   /**
    * Actual collider setup happens onMount as only then
    * the transforms are finished.
@@ -64,7 +72,7 @@
 
     const scaledArgs = scaleColliderArgs(shape, args, scale)
 
-    // @ts-expect-error
+    // @ts-expect-error Todo
     const colliderDesc = ColliderDesc[shape](...scaledArgs) as ColliderDesc
 
     const currentCollider = world.createCollider(colliderDesc, rigidBody.current)
@@ -73,13 +81,11 @@
     /**
      * Add collider to context
      */
-    rapierContext.addColliderToContext(currentCollider, object, {
-      oncollisionenter,
-      oncollisionexit,
-      oncontact,
-      onsensorenter,
-      onsensorexit
-    })
+    rapierContext.addColliderToContext(
+      currentCollider,
+      object,
+      untrack(() => events)
+    )
 
     /**
      * For use in conjunction with component <CollisionGroups>
@@ -167,17 +173,8 @@
 
   $effect(() => {
     if (collider) {
-      applyColliderActiveEvents(
-        collider,
-        {
-          oncollisionenter,
-          oncollisionexit,
-          oncontact,
-          onsensorenter,
-          onsensorexit
-        },
-        rigidBody.current?.userData?.events
-      )
+      rapierContext.addColliderToContext(collider, object, events)
+      applyColliderActiveEvents(collider, events, rigidBody.events)
     }
   })
 
