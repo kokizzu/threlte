@@ -1,5 +1,11 @@
 # @threlte/core
 
+## 8.5.16
+
+### Patch Changes
+
+- 77b7c68: Improve useMeasure resize behavior and reduce unnecessary layout reads
+
 ## 8.5.15
 
 ### Patch Changes
