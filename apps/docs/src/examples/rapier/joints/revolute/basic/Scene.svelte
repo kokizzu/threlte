@@ -4,7 +4,12 @@
   import { Collider, Debug, RigidBody } from '@threlte/rapier'
   import Pendulum from './Pendulum.svelte'
 
-  let { debug, resetKey }: { debug: boolean; resetKey: number } = $props()
+  interface Props {
+    debug: boolean
+    resetKey: number
+  }
+
+  let { debug, resetKey }: Props = $props()
 
   const stack = Array.from({ length: 4 }, (_, i) => i)
 </script>

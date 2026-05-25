@@ -4,7 +4,12 @@
   import { Collider, Debug, RigidBody } from '@threlte/rapier'
   import Press from './Press.svelte'
 
-  let { debug, resetKey }: { debug: boolean; resetKey: number } = $props()
+  interface Props {
+    debug: boolean
+    resetKey: number
+  }
+
+  let { debug, resetKey }: Props = $props()
 
   const cubes: [number, number, number][] = [
     [-1.1, 1.0, -0.6],

@@ -5,7 +5,7 @@
   import type { Vector3Tuple } from 'three'
   import FixedJoint from './FixedJoint.svelte'
 
-  type Props = {
+  interface Props {
     position?: Vector3Tuple
     rotation?: Vector3Tuple
     velocity?: Vector3Tuple

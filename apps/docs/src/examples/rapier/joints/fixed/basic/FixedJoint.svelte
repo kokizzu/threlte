@@ -3,7 +3,7 @@
   import { useFixedJoint } from '@threlte/rapier'
   import type { Vector3Tuple } from 'three'
 
-  type Props = {
+  interface Props {
     bodyA: RapierRigidBody
     bodyB: RapierRigidBody
     anchorA: Vector3Tuple

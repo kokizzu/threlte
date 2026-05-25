@@ -15,8 +15,6 @@
     }
   })
 
-  // Periodic pump: every ~1.4s the platform gets an upward kick, then gravity
-  // pulls it back down to the joint's lower limit before the next pump fires.
   const PUMP_INTERVAL = 1.4
   let elapsed = 0
 

@@ -4,7 +4,12 @@
   import { Collider, Debug, RigidBody } from '@threlte/rapier'
   import Chain from './Chain.svelte'
 
-  let { debug, resetKey }: { debug: boolean; resetKey: number } = $props()
+  interface Props {
+    debug: boolean
+    resetKey: number
+  }
+
+  let { debug, resetKey }: Props = $props()
 
   const tower = Array.from({ length: 4 }, (_, i) => i)
 </script>

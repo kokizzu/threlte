@@ -9,12 +9,9 @@
   const wreckingRadius = 0.4
   const beadDensity = 1
   const wreckingDensity = 3
-  // center-to-center distance between bead 6 and wrecking ball (radii + small gap)
   const wreckingOffset = radius + wreckingRadius + 0.05
-  // local-x anchor on the wrecking ball pointing back at the previous bead
-  const WRECKING_ANCHOR = wreckingOffset - spacing / 2
+  const wreckingAnchor = wreckingOffset - spacing / 2
 
-  // bodies[0] = fixed anchor, bodies[1..7] = small beads, bodies[8] = wrecking ball
   const bodies = $state<(RapierRigidBody | undefined)[]>(
     Array.from({ length: segments + 1 }, () => undefined)
   )
@@ -27,7 +24,7 @@
       return useSphericalJoint([0, 0, 0], [spacing / 2, 0, 0])
     }
     if (i === segments - 1) {
-      return useSphericalJoint([-spacing / 2, 0, 0], [WRECKING_ANCHOR, 0, 0])
+      return useSphericalJoint([-spacing / 2, 0, 0], [wreckingAnchor, 0, 0])
     }
     return useSphericalJoint([-spacing / 2, 0, 0], [spacing / 2, 0, 0])
   })

@@ -26,20 +26,22 @@ export const useMeasure = (element: HTMLElement) => {
   let lastRectHeight = 0
   let dirty = true
 
-  // ResizeObserver fires after rAF, so trusting it alone would render one
-  // frame stale during resize. To keep frames in sync without paying a
-  // per-frame layout flush in steady state, the observer (and the synchronous
-  // window resize event) opens a short resize-phase window during which
-  // shouldUpdateSize re-reads layout at rAF time. Outside that window it
-  // returns immediately.
-  //
-  // The window.resize listener is critical for window-driven resizes: it fires
-  // *before* the affected rAF tick, so the gate is already open by the time
-  // shouldUpdateSize runs that same frame — renderer.setSize() commits with
-  // the new size before paint, avoiding a black flash. The ResizeObserver
-  // handles container-driven resizes (sibling layout, theme toggle); those
-  // get one frame of paint-stale dimensions but no visible flash since they
-  // aren't tied to a fast user drag.
+  /**
+   * ResizeObserver fires after rAF, so trusting it alone would render one
+   * frame stale during resize. To keep frames in sync without paying a
+   * per-frame layout flush in steady state, the observer (and the synchronous
+   * window resize event) opens a short resize-phase window during which
+   * shouldUpdateSize re-reads layout at rAF time. Outside that window it
+   * returns immediately.
+   *
+   * The window.resize listener is critical for window-driven resizes: it fires
+   * *before* the affected rAF tick, so the gate is already open by the time
+   * shouldUpdateSize runs that same frame — renderer.setSize() commits with
+   * the new size before paint, avoiding a black flash. The ResizeObserver
+   * handles container-driven resizes (sibling layout, theme toggle); those
+   * get one frame of paint-stale dimensions but no visible flash since they
+   * aren't tied to a fast user drag.
+   */
   let inResizePhase = false
   let resizePhaseTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -60,8 +62,10 @@ export const useMeasure = (element: HTMLElement) => {
     dirty = true
     enterResizePhase()
 
-    // Stamp size eagerly so consumers reading size.current outside rAF
-    // (event handlers, async work) see fresh dimensions.
+    /**
+     * Stamp size eagerly so consumers reading size.current outside rAF
+     * (event handlers, async work) see fresh dimensions.
+     */
     const rect = element.getBoundingClientRect()
     size = { width: rect.width, height: rect.height }
   })
@@ -69,10 +73,12 @@ export const useMeasure = (element: HTMLElement) => {
   function shouldUpdateSize() {
     if (!dirty && !inResizePhase) return false
 
-    // clientWidth/Height is integer-rounded but cheap; gate the precise,
-    // transform-aware getBoundingClientRect read behind it. The dirty flag
-    // forces the precise read after the observer fires, catching subpixel
-    // changes that integer-rounded clientWidth/Height misses.
+    /**
+     * clientWidth/Height is integer-rounded but cheap; gate the precise,
+     * transform-aware getBoundingClientRect read behind it. The dirty flag
+     * forces the precise read after the observer fires, catching subpixel
+     * changes that integer-rounded clientWidth/Height misses.
+     */
     const { clientWidth, clientHeight } = element
     if (!dirty && clientWidth === lastClientWidth && clientHeight === lastClientHeight) {
       return false

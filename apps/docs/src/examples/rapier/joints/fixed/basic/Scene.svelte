@@ -5,7 +5,12 @@
   import Hammer from './Hammer.svelte'
   import Tower from './Tower.svelte'
 
-  let { debug, resetKey }: { debug: boolean; resetKey: number } = $props()
+  interface Props {
+    debug: boolean
+    resetKey: number
+  }
+
+  let { debug, resetKey }: Props = $props()
 </script>
 
 <T.PerspectiveCamera

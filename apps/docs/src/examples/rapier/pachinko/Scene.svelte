@@ -12,7 +12,11 @@
   import Windmills from './Windmills.svelte'
   import { CABINET_WIDTH, CROWN_Y, FIELD_HEIGHT } from './gameState.svelte'
 
-  let { debug }: { debug: boolean } = $props()
+  interface Props {
+    debug: boolean
+  }
+
+  let { debug }: Props = $props()
 </script>
 
 <SoftShadows />
