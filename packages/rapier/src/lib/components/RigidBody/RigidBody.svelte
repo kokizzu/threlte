@@ -17,7 +17,7 @@
   import type { ThrelteRigidBody } from '../../types/types.js'
   import { overrideTeleportMethods } from './overrideTeleportMethods.svelte.js'
   import type { RigidBodyProps } from './types.js'
-  import { provideRigidbody } from '../../hooks/useRigidBody.js'
+  import { provideRigidbody, provideRigidBodyEvents } from '../../hooks/useRigidBody.js'
 
   const { world, rapier, addRigidBodyToContext, removeRigidBodyFromContext } = useRapier()
 
@@ -60,7 +60,9 @@
   /**
    * RigidBody Description
    */
-  const desc = $derived(new rapier.RigidBodyDesc(parseRigidBodyType(type)).setCanSleep(canSleep))
+  const desc = new rapier.RigidBodyDesc(parseRigidBodyType(untrack(() => type))).setCanSleep(
+    untrack(() => canSleep)
+  )
 
   /**
    * Temporary RigidBody init
@@ -91,8 +93,7 @@
 
   /**
    * Stored on userData so per-frame loops can read it without a wasm round-trip
-   * through `world.getRigidBody(handle)`. Tracked reactively so a body re-created
-   * by a `type` / `canSleep` change replaces the stale reference.
+   * through `world.getRigidBody(handle)`.
    */
   $effect(() => {
     object.userData.rigidBody = rigidBodyInternal
@@ -157,10 +158,8 @@
    * Setting the RigidBody context so that colliders can
    * hook onto.
    */
-  provideRigidbody(
-    () => rigidBodyInternal,
-    () => events
-  )
+  provideRigidbody(() => rigidBodyInternal)
+  provideRigidBodyEvents(() => events)
 
   /**
    * Used by child colliders to restore transform

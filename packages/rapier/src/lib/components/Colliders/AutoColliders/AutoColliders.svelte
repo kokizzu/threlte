@@ -8,7 +8,7 @@
   import { Group } from 'three'
   import { useCollisionGroups } from '../../../hooks/useCollisionGroups.svelte.js'
   import { useRapier } from '../../../hooks/useRapier.js'
-  import { useRigidBody } from '../../../hooks/useRigidBody.js'
+  import { useRigidBody, useRigidBodyEvents } from '../../../hooks/useRigidBody.js'
   import { applyColliderActiveEvents } from '../../../lib/applyColliderActiveEvents.js'
   import { createCollidersFromChildren } from '../../../lib/createCollidersFromChildren.js'
   import { eulerToQuaternion } from '../../../lib/eulerToQuaternion.js'
@@ -41,6 +41,7 @@
   const group = new Group()
 
   const rigidBody = useRigidBody()
+  const rigidBodyEvents = useRigidBodyEvents()
   const rigidBodyParentObject = useParentRigidbodyObject()
 
   const { world, addColliderToContext, removeColliderFromContext } = useRapier()
@@ -81,7 +82,7 @@
     collisionGroups.registerColliders(colliders)
 
     for (const collider of colliders) {
-      applyColliderActiveEvents(collider, events, rigidBody.events)
+      applyColliderActiveEvents(collider, events, rigidBodyEvents.current)
       collider.setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       collider.setRestitution(restitution ?? 0)
       collider.setRestitutionCombineRule(restitutionCombineRule ?? CoefficientCombineRule.Average)
@@ -114,11 +115,11 @@
   $effect(() => {
     if (!colliders) return
 
-    const rigidBodyEvents = rigidBody.events
+    const currentRigidBodyEvents = rigidBodyEvents.current
 
     for (const collider of colliders) {
       addColliderToContext(collider, group, events)
-      applyColliderActiveEvents(collider, events, rigidBodyEvents)
+      applyColliderActiveEvents(collider, events, currentRigidBodyEvents)
     }
   })
 

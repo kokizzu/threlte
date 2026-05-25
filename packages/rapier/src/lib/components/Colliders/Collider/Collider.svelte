@@ -12,7 +12,7 @@
   import { Object3D, Quaternion, Vector3 } from 'three'
   import { useCollisionGroups } from '../../../hooks/useCollisionGroups.svelte.js'
   import { useRapier } from '../../../hooks/useRapier.js'
-  import { useRigidBody } from '../../../hooks/useRigidBody.js'
+  import { useRigidBody, useRigidBodyEvents } from '../../../hooks/useRigidBody.js'
   import { applyColliderActiveEvents } from '../../../lib/applyColliderActiveEvents.js'
   import { eulerToQuaternion } from '../../../lib/eulerToQuaternion.js'
   import { getWorldPosition, getWorldQuaternion } from '../../../lib/getWorldTransforms.js'
@@ -47,6 +47,7 @@
 
   const object = new Object3D()
   const rigidBody = useRigidBody()
+  const rigidBodyEvents = useRigidBodyEvents()
   const parentRigidBodyObject = useParentRigidbodyObject()
   const hasRigidBodyParent = $derived(rigidBody.current !== undefined)
 
@@ -174,7 +175,7 @@
   $effect(() => {
     if (collider) {
       rapierContext.addColliderToContext(collider, object, events)
-      applyColliderActiveEvents(collider, events, rigidBody.events)
+      applyColliderActiveEvents(collider, events, rigidBodyEvents.current)
     }
   })
 

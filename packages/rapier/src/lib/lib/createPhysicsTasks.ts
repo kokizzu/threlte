@@ -111,10 +111,10 @@ export const createPhysicsTasks = (
 
       const shouldUpdateSimulationData = updateRigidBodySimulationData.current
 
-      rigidBodyObjects.forEach((mesh, handle) => {
+      for (const [handle, mesh] of rigidBodyObjects) {
         const rigidBody = mesh.userData.rigidBody as ThrelteRigidBody | undefined
 
-        if (!rigidBody || !rigidBody.isValid()) return
+        if (!rigidBody || !rigidBody.isValid()) continue
 
         const isSleeping = rigidBody.isSleeping()
         const events = rigidBodyEventDispatchers.get(handle)
@@ -130,7 +130,7 @@ export const createPhysicsTasks = (
         }
 
         if (isSleeping || rigidBody.isFixed() || !mesh.parent) {
-          return
+          continue
         }
 
         if (shouldUpdateSimulationData) {
@@ -166,7 +166,7 @@ export const createPhysicsTasks = (
             )
           }
         }
-      })
+      }
 
       eventQueue.drainContactForceEvents((e) => {
         const collider1 = world.getCollider(e.collider1())
@@ -394,9 +394,12 @@ export const createPhysicsTasks = (
       const isVaryingFramerate = framerate.current === 'varying'
       const offset = simulationOffset.current
 
-      rigidBodyObjects.forEach((mesh) => {
-        if (!objectHasPhysicsUserData(mesh)) return
-        const userData = mesh.userData.physics
+      for (const object of rigidBodyObjects.values()) {
+        if (!objectHasPhysicsUserData(object)) {
+          continue
+        }
+
+        const userData = object.userData.physics
         if (isVaryingFramerate) {
           tempObject.position.copy(userData.currentPosition)
           tempObject.quaternion.copy(userData.currentQuaternion)
@@ -407,20 +410,20 @@ export const createPhysicsTasks = (
             .slerp(userData.currentQuaternion, offset)
         }
 
-        if (mesh.parent) {
+        if (object.parent) {
           // Rapier has no concept of scale, so we use the mesh's world scale
           // so the local-pose decomposition handles non-uniform parent scale correctly.
-          mesh.getWorldScale(tempVector3)
+          object.getWorldScale(tempVector3)
           tempObject.scale.copy(tempVector3)
 
           tempObject.updateMatrix()
-          tempMatrix4.copy(mesh.parent.matrixWorld).invert()
+          tempMatrix4.copy(object.parent.matrixWorld).invert()
           tempObject.applyMatrix4(tempMatrix4)
         }
 
-        mesh.position.copy(tempObject.position)
-        mesh.quaternion.copy(tempObject.quaternion)
-      })
+        object.position.copy(tempObject.position)
+        object.quaternion.copy(tempObject.quaternion)
+      }
     },
     {
       stage: synchronizationStage

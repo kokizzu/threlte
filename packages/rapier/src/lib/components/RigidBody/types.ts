@@ -14,30 +14,37 @@ export interface RigidBodyProps extends CreateEvent<RapierRigidBody>, RigidBodyE
    */
   type?: RigidBodyTypeString
 
-  /** Whether or not this body can sleep.
-   * default: true
+  /** Whether or not this body can sleep. This property is not reactive.
+   *
+   * @default true
    */
   canSleep?: boolean
 
-  /** The linear velocity of this body.
-   * default: zero velocity
+  /**
+   * The linear velocity of this body.
+   *
+   * @default [0, 0, 0]
    */
   linearVelocity?: Parameters<Vector3['set']>
 
-  /** The angular velocity of this body.
-   * Default: zero velocity.
+  /**
+   * The angular velocity of this body.
+   *
+   * @default [0, 0, 0]
    */
   angularVelocity?: Parameters<Euler['set']>
 
   /**
    * The scaling factor applied to the gravity affecting the rigid-body.
-   * Default: 1.0
+   *
+   * @default 1
    */
   gravityScale?: number
 
   /**
    * Whether or not Continous Collision Detection is enabled for this rigid-body.
    * https://rapier.rs/docs/user_guides/javascript/rigid_bodies#continuous-collision-detection
+   *
    * @default false
    */
   ccd?: boolean
@@ -67,23 +74,27 @@ export interface RigidBodyProps extends CreateEvent<RapierRigidBody>, RigidBodyE
    * It can be used to make one rigid-body immune to forces
    * originating from contacts with some other bodies.
    *
-   * Number in the range -127 to 127, default is 0
+   * Number in the range -127 to 127
+   *
+   * @default 0
    */
   dominance?: number
 
   /**
    * Damping lets you slow down a rigid-body automatically. This can be used to
    * achieve a wide variety of effects like fake air friction. Larger values of
-   * damping coefficients lead to a stronger slow-downs. Their default
-   * values are 0.0 (no damping at all).
+   * damping coefficients lead to a stronger slow-downs.
+   *
+   * @default 0
    */
   linearDamping?: number
 
   /**
    * Damping lets you slow down a rigid-body automatically. This can be used to
    * achieve a wide variety of effects like fake air friction. Larger values of
-   * damping coefficients lead to a stronger slow-downs. Their default
-   * values are 0.0 (no damping at all).
+   * damping coefficients lead to a stronger slow-downs.
+   *
+   * @default 0
    */
   angularDamping?: number
 

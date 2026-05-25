@@ -1,7 +1,7 @@
 // hooks
 export { useRapier } from './hooks/useRapier.js'
 export { useCollisionGroups } from './hooks/useCollisionGroups.svelte.js'
-export { useRigidBody_deprecated as useRigidBody } from './hooks/useRigidBody.js'
+export { useRigidBody } from './hooks/useRigidBody.js'
 export { usePhysicsTask } from './hooks/usePhysicsTask.js'
 
 // Joints
