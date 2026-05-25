@@ -1,5 +1,12 @@
 # @threlte/extras
 
+## 9.20.1
+
+### Patch Changes
+
+- 2bb801e: Fix HTML component not responding correctly to resize events
+- 2bb801e: Fix Bounds component in no-animate mode
+
 ## 9.20.0
 
 ### Minor Changes
